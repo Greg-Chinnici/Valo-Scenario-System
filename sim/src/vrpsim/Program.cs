@@ -5,9 +5,10 @@
 //       simulate the rest of a round from a moment of it (default: the barrier drop). By default agents follow the
 //       recording until they diverge, so without --takeover or --ai every run should reproduce what happened.
 //       --ci h: keep running (up to -n) until the attacker win rate is known to +-h (95%).
-//   vrpsim calibrate <a.vrp> [more.vrp ...] [-n 100] [--at 0,20,40] [--profiles loo|fitted|default] [--knobs] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0] [--csv out.csv] [--players]
+//   vrpsim calibrate <a.vrp> [more.vrp ...] [-n 100] [--at 0,20,40] [--profiles loo|fitted|default] [--knobs] [--neutral decisions,sense] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0] [--csv out.csv] [--players]
 //       restart every recorded round from snapshots (seconds after the barrier) with everyone as AI and score the
 //       simulated outcomes against what really happened. See Calibration.cs. --knobs: no measured execution.
+//       --neutral: replace fitted decision knobs (aggression, cohesion, style) and/or sense (Skill) with neutral ones.
 //       --learned: per-map learned behaviour (LookModel, TempoModel) from the other replays only, all of them, or none.
 //       --perception valoreplay: ValoReplay round play's view and hearing ranges, with the transfer tuned for them.
 //   vrpsim tune <a.vrp> [more.vrp ...] [-n 40] [--iterations 3] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0]
@@ -16,6 +17,11 @@
 //   vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]
 //       example bots (Bots.cs: skill tiers x archetypes, five-player lineups) playing each other from every recorded
 //       round's barrier drop, each round with both lineups attacking (BotMatch.cs). -n: runs per round and side.
+//   vrpsim duels <a.vrp> [more.vrp ...] [-n 2] [--players] [--threads 0]
+//       who sees whom first, by how much and what it is worth, time to the first shot, first-shot miss and overswing by
+//       flick, exposure and walls: recorded rounds against simulated ones measured the same way (Duels.cs). --players:
+//       how exposure and walls correlate with skill per recorded player-match.
+//   calibrate, bots and duels take --set <SimOptions field>=<value> (repeatable), e.g. --set PreAimReaction=0.6, to try constants.
 //   vrpsim validate <folder|a.vrp> [...]
 //       checks replays meant for publishing: each loads with this .vrp layout, is anonymized (pseudonymous ids, generated
 //       or no names, no crosshair names, no recording time, no user tags), is named <Map>-<match id>.vrp, and plays a
@@ -42,6 +48,7 @@ static class Program
                 "tune" => TuneCmd(args.Skip(1).ToList()),
                 "validate" => ValidateCmd(args.Skip(1).ToList()),
                 "bots" => BotsCmd(args.Skip(1).ToList()),
+                "duels" => DuelsCmd(args.Skip(1).ToList()),
                 _ => Usage(),
             };
         }
@@ -57,9 +64,10 @@ static class Program
         Console.Error.WriteLine("vrpsim map <a.vrp> [more.vrp ...] [--pgm out.pgm]");
         Console.Error.WriteLine("vrpsim profiles <match.vrp>");
         Console.Error.WriteLine("vrpsim run <match.vrp> --at <round>[:<m:ss>] [--map more.vrp ...] [-n 200] [--ci 0.03] [--seed 0] [--threads 0] [--ai] [--takeover <player>]");
-        Console.Error.WriteLine("vrpsim calibrate <a.vrp> [more.vrp ...] [-n 100] [--at 0,20,40] [--profiles loo|fitted|default] [--knobs] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0] [--csv out.csv] [--players]");
+        Console.Error.WriteLine("vrpsim calibrate <a.vrp> [more.vrp ...] [-n 100] [--at 0,20,40] [--profiles loo|fitted|default] [--knobs] [--neutral decisions,sense] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0] [--csv out.csv] [--players]");
         Console.Error.WriteLine("vrpsim tune <a.vrp> [more.vrp ...] [-n 40] [--iterations 3] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0]");
         Console.Error.WriteLine("vrpsim validate <folder|a.vrp> [...]");
+        Console.Error.WriteLine("vrpsim duels <a.vrp> [more.vrp ...] [-n 2] [--players] [--threads 0]");
         Console.Error.WriteLine("vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]");
         return 2;
     }
@@ -143,6 +151,21 @@ static class Program
     }
 
     static bool Flag(List<string> a, string flag) => a.Remove(flag);
+
+    /// <summary>Applies every --set Field=value to a SimOptions (a new one when null and something is set).</summary>
+    static SimOptions Sets(List<string> a, SimOptions o)
+    {
+        for (string kv; (kv = Take(a, "--set")) != null;)
+        {
+            var parts = kv.Split('=', 2);
+            var field = typeof(SimOptions).GetField(parts[0]) ?? throw new ArgumentException($"--set {parts[0]}: no such SimOptions field");
+            if (parts.Length < 2) throw new ArgumentException($"--set {kv}: expected Field=value");
+            o ??= new SimOptions();
+            field.SetValue(o, Convert.ChangeType(parts[1], field.FieldType, CultureInfo.InvariantCulture));
+            Console.WriteLine($"SimOptions.{parts[0]} = {parts[1]}");
+        }
+        return o;
+    }
 
     static string MapName(VrpReplay r) => MapCatalog.DisplayName(r.Map);
 
@@ -267,6 +290,20 @@ static class Program
         return 0;
     }
 
+    // ---------------------------------------------------------------- duels
+
+    static int DuelsCmd(List<string> a)
+    {
+        int n = int.Parse(Take(a, "-n") ?? "2", CultureInfo.InvariantCulture);
+        int threads = int.Parse(Take(a, "--threads") ?? "0", CultureInfo.InvariantCulture);
+        bool players = Flag(a, "--players");
+        var options = Sets(a, null);
+        var files = a.SelectMany<string, string>(p => Directory.Exists(p) ? Directory.GetFiles(p, "*.vrp").OrderBy(f => f, StringComparer.Ordinal) : new[] { p }).ToList();
+        if (files.Count == 0) throw new ArgumentException("at least one .vrp expected");
+        Duels.Run(files.Select(VrpReplay.Load).ToList(), n, options, players, threads);
+        return 0;
+    }
+
     // ---------------------------------------------------------------- bots
 
     static int BotsCmd(List<string> a)
@@ -275,13 +312,14 @@ static class Program
         int seed = int.Parse(Take(a, "--seed") ?? "0", CultureInfo.InvariantCulture);
         int threads = int.Parse(Take(a, "--threads") ?? "0", CultureInfo.InvariantCulture);
         var only = (Take(a, "--only") ?? "roster,ladder,styles,brains").Split(',').ToHashSet();
+        var simOptions = Sets(a, null);
         var files = a.SelectMany<string, string>(p => Directory.Exists(p) ? Directory.GetFiles(p, "*.vrp").OrderBy(f => f, StringComparer.Ordinal) : new[] { p }).ToList();
         if (files.Count == 0) throw new ArgumentException("at least one .vrp expected");
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var arena = new BotArena(files.Select(VrpReplay.Load));
         Console.WriteLine($"{files.Count} replays, {arena.Maps.Count} maps, {arena.Rounds} rounds from the barrier drop x 2 sides x {n} runs = " +
             $"{arena.Rounds * 2 * n:N0} simulated rounds per matchup (recorded positions and guns, every agent AI)");
-        BotMatchResult Play(BotLineup x, BotLineup y) => arena.Play(x, y, n, seed, threads);
+        BotMatchResult Play(BotLineup x, BotLineup y) => arena.Play(x, y, n, seed, threads, simOptions);
 
         if (only.Contains("roster"))
         {
@@ -297,9 +335,9 @@ static class Program
             }
             Console.WriteLine("  (Average = the replays' population; sense = Profile.Skill: memory, hearing, decision rate, reads, flick speed)");
             Console.WriteLine();
-            Console.WriteLine($"archetypes  {"style",-8} {"aggr",4} {"coh",4}");
+            Console.WriteLine($"archetypes  {"style",-8} {"aggr",4} {"coh",4} {"trust",5}");
             foreach (var x in BotArchetype.All)
-                Console.WriteLine($"  {x.Name,-9} {x.Style,-8} {x.Aggression,4:0.00} {x.Cohesion,4:0.00}  {x.Description}");
+                Console.WriteLine($"  {x.Name,-9} {x.Style,-8} {x.Aggression,4:0.00} {x.Cohesion,4:0.00} {x.Trust,5:0.00}  {x.Description}");
             Console.WriteLine();
             Console.WriteLine("lineups");
             foreach (var l in Bots.StyleLineups())
@@ -333,6 +371,9 @@ static class Program
             BotRow($"{aim.Name} (the other)", Play(aim, sense), 37);
             BotRow("Average aim, Pro sense (Novice sense)", Play(Bots.Lineup("", BotTier.Average, BotTier.Pro, Bots.Standard),
                 Bots.Lineup("", BotTier.Average, BotTier.Novice, Bots.Standard)), 37);
+            BotLineup Trusting(float trust) { var l = Bots.Lineup("", BotTier.Average, Bots.Standard); foreach (var b in l.Bots) b.Profile.Trust = trust; return l; }
+            BotRow("Trust 1 (trust 0), Average", Play(Trusting(1f), Trusting(0f)), 37);
+            BotRow("Trust 1 (archetype trust), Average", Play(Trusting(1f), average), 37);
         }
 
         if (only.Contains("styles"))
@@ -415,8 +456,15 @@ static class Program
         string csv = Take(a, "--csv");
         bool listPlayers = Flag(a, "--players");
         o.Measured = !Flag(a, "--knobs");
+        foreach (var x in (Take(a, "--neutral") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (x == "decisions") o.FittedDecisions = false;
+            else if (x == "sense") o.FittedSense = false;
+            else throw new ArgumentException($"--neutral {x}: decisions or sense");
+        }
         o.Learned = ParseLearned(Take(a, "--learned"));
         (o.Sim, o.Transfer) = Perception(Take(a, "--perception"));
+        o.Sim = Sets(a, o.Sim);
         if (a.Count == 0) throw new ArgumentException("at least one .vrp expected");
 
         var replays = a.Select(VrpReplay.Load).ToList();
@@ -430,7 +478,8 @@ static class Program
         if (!Console.IsErrorRedirected) Console.Error.WriteLine();
         var all = rep.Snapshots;
         string profiles = o.Profiles switch { ProfileSource.LeaveRoundOut => "fitted, leaving the round out", ProfileSource.Fitted => "fitted (incl. the round)", _ => "default" }
-            + (o.Profiles != ProfileSource.Default && !o.Measured ? ", knobs only" : "") + $"; learned {o.Learned.ToString().ToLowerInvariant()}; transfer {o.Transfer ?? ProfileFitter.Transfer}";
+            + (o.Profiles != ProfileSource.Default && !o.Measured ? ", knobs only" : "")
+            + (!o.FittedDecisions ? ", neutral decisions" : "") + (!o.FittedSense ? ", neutral sense" : "") + $"; learned {o.Learned.ToString().ToLowerInvariant()}; transfer {o.Transfer ?? ProfileFitter.Transfer}";
         Console.WriteLine($"{rep.Replays} replays ({string.Join(", ", replays.GroupBy(r => MapName(r)).Select(g => $"{g.Key} {g.Count()}"))}), " +
             $"{rep.Rounds} rounds, {all.Count} snapshots x {o.Runs} runs = {rep.SimulatedRounds:N0} simulated rounds in {clock.Elapsed.TotalSeconds:0} s; profiles {profiles}");
 
