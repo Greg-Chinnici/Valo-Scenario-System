@@ -34,6 +34,16 @@ namespace ValoReplay.Play
         public KnowledgeSim Knowledge { get; private set; }
         /// <summary>Area beliefs count as a position of this certainty times the area's probability (a sighting is 1).</summary>
         public float areaCertainty = 0.5f;
+        /// <summary>Supplement (default): every agent decides like in the headless simulation (vrpsim, self-play): from what
+        /// it saw and heard itself (its own memory and hearing) and the callouts it trusts (delayed or dropped by the
+        /// caller's cohesion); the blackboard only adds what the simulation cannot sense (recon reveals, last round's
+        /// intel, area guesses once the team's own sighting is stale). Replace: everyone on a team decides from the whole
+        /// blackboard, so the whole team knows what any of them does at once.</summary>
+        public BeliefSourceMode beliefMode = BeliefSourceMode.Supplement;
+        /// <summary>Supplement: area guesses about an enemy wait this long after the team's last sighting, sound or hit of
+        /// it, the slowest callout (Profile.CalloutDelay at cohesion 0), so they never pass on a fresh sighting faster
+        /// than a callout would.</summary>
+        public const float AreaAfterSighting = 2.5f;
         private readonly KnowledgeSettings _knowledgeSettings = new KnowledgeSettings();
         private readonly Dictionary<string, byte> _equippable = new Dictionary<string, byte>();
         private int _roundIndex, _eventsSeen;
@@ -112,6 +122,7 @@ namespace ValoReplay.Play
                     FootstepRange = ks.footstepRange, GunshotRange = ks.gunshotRange,
                 };
                 var (map, fitted) = MapFor(replay, vrpPath, folders, options);
+                _ = map.Grid.Clearance;     // computed once per map, here off the main thread (wide corners need it)
                 return RoundSim.FromReplay(replay, map, takeover, p => fitted[p].Profile, options, seed, followRecording);
             });
         }
@@ -286,6 +297,7 @@ namespace ValoReplay.Play
                 yield return null;
             }
             Knowledge.GoLive(this);
+            Sim.BeliefSourceMode = beliefMode;
             Sim.BeliefSource = this;
         }
 
@@ -566,16 +578,22 @@ namespace ValoReplay.Play
         // ------------------------------------------------------------------ IBeliefSource: decisions read the blackboard
 
         /// <summary>The team's blackboard on one enemy: a live sighting is certain; otherwise the last position (seen,
-        /// revealed, heard, hit by) decayed by age, or the most likely callout area when that says more.</summary>
+        /// revealed, heard, hit by) decayed by age, or the most likely callout area when that says more. In Supplement
+        /// mode only what the simulation does not sense itself: reveals, last round's intel, and areas once the team's own
+        /// sighting, sound or hit is older than AreaAfterSighting.</summary>
         public bool Believes(int team, int enemy, out SVector3 position, out float certainty)
         {
             position = default;
             certainty = 0f;
             var ei = Intel(team, enemy);
             if (ei == null || ei.Dead) return false;
+            bool supplement = Sim != null && Sim.BeliefSourceMode == BeliefSourceMode.Supplement;
+            bool sensed = ei.PositionSource == IntelSource.Seen || ei.PositionSource == IntelSource.Heard || ei.PositionSource == IntelSource.HitBy;
             float c = ei.Visible ? 1f : ei.CertaintyAt(Knowledge.Time, _knowledgeSettings);
+            if (supplement && (ei.Visible || sensed)) c = 0f;      // the agents' own senses and callouts have this
             var p = ei.Position;
-            if (Knowledge.Areas != null)
+            bool areasWait = supplement && (ei.Visible || (sensed && Knowledge.Time - ei.PositionTime < AreaAfterSighting));
+            if (Knowledge.Areas != null && !areasWait)
             {
                 int area = ei.MostLikelyArea(out float prob);
                 if (area >= 0 && prob * areaCertainty > c) { c = prob * areaCertainty; p = Knowledge.Areas.Areas[area].Center; }
@@ -664,7 +682,7 @@ namespace ValoReplay.Play
             rows.Append(Started ? $"sim {Sim.Time:0.0}s   director: atk {DirectorText(Sim.AttackingTeam)}\n" : "waiting for the barrier drop\n");
             for (int team = 0; team < 2; team++)
             {
-                rows.Append($"<color={(team == Team ? "#7CFFB2" : "#FF6B6B")}>blackboard</color> ");
+                rows.Append($"<color={(team == Team ? "#7CFFB2" : "#FF6B6B")}>{(Sim.BeliefSourceMode == BeliefSourceMode.Supplement ? "blackboard adds" : "blackboard")}</color> ");
                 bool any = false;
                 foreach (var ei in Knowledge.Teams[team].EachEnemy())
                 {
