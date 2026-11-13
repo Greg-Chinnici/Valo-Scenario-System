@@ -51,6 +51,11 @@ namespace ValorantReplay.Sim
         public ProfileSource Profiles = ProfileSource.LeaveRoundOut;
         /// <summary>Use fitted profiles' measured execution (accuracy, hit regions, reaction); false = knobs only.</summary>
         public bool Measured = true;
+        /// <summary>Use fitted profiles' decision knobs (aggression, cohesion, style); false = neutral ones (0.5, Balanced),
+        /// to measure what fitting them adds.</summary>
+        public bool FittedDecisions = true;
+        /// <summary>Use fitted profiles' Skill knob (memory, hearing, decision rate, reads); false = 0.5.</summary>
+        public bool FittedSense = true;
         public LearnedSource Learned = LearnedSource.Holdout;
         /// <summary>How fitted profiles' measured execution becomes parameters (null = ProfileFitter.Transfer); use the one
         /// tuned for Sim's perception.</summary>
@@ -222,7 +227,7 @@ namespace ValorantReplay.Sim
             Parallel.For(0, replays.Count, parallel, m =>
             {
                 var map = maps[replays[m].Map];
-                if (options.Learned == LearnedSource.None) simMaps[m] = map.WithLearned(null, null);
+                if (options.Learned == LearnedSource.None) simMaps[m] = map.WithLearned(null, null, null);
                 else if (options.Learned == LearnedSource.All) simMaps[m] = map;
                 else
                 {
@@ -230,7 +235,8 @@ namespace ValorantReplay.Sim
                     var look = LookModel.FromReplays(others);
                     var tempo = TempoModel.FromReplays(others);
                     if (!tempo.Known) tempo = TempoModel.FromReplays(replays.Where(o => o != replays[m]));
-                    simMaps[m] = map.WithLearned(look.Samples > 0 ? look : null, tempo);
+                    var holds = HoldModel.FromReplays(others, map.Sites);
+                    simMaps[m] = map.WithLearned(look.Samples > 0 ? look : null, tempo, holds.Known ? holds : null);
                 }
             });
 
@@ -266,7 +272,13 @@ namespace ValorantReplay.Sim
                     foreach (var (m, ri) in jobs.Select(j => (j.Replay, j.Round)).Distinct())
                         leaveOut[(m, ri)] = ProfileFitter.Fit(measures[m], x => x != ri, options.Transfer);
             }
-            Profile Chosen(Profile p) => options.Measured ? p : p.Unmeasured();
+            Profile Chosen(Profile p)
+            {
+                if (!options.Measured) p = p.Unmeasured();
+                if (!options.FittedDecisions) p = p.With(aggression: 0.5f, cohesion: 0.5f, style: PlayStyle.Balanced);
+                if (!options.FittedSense) p = p.With(skill: 0.5f);
+                return p;
+            }
             Profile ProfileOf(int m, int ri, int p) => options.Profiles switch
             {
                 ProfileSource.LeaveRoundOut => Chosen(leaveOut[(m, ri)][p].Profile),

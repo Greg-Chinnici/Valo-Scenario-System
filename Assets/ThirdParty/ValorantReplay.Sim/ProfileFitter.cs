@@ -156,9 +156,13 @@ namespace ValorantReplay.Sim
         // of their own data a player needs before it counts as much as the population (shrinkage). Shooting is measured
         // from the barrier drop to the decision. Reaction and aim error depend on the perception (what counts as a
         // notice), so their population values live in ExecutionTransfer.
-        public static float AccuracyMean = 0.194f, AccuracyPrior = 200f;    // bullets
-        public static float HeadHitMean = 0.189f, LegHitMean = 0.082f, HitPrior = 40f;   // hits
-        public static float ReactionPrior = 8f, AimErrorPrior = 20f;        // reactions; notices
+        // Priors from split-half reliability (odd vs even rounds of each player-match): prior = n (1 - R) / R at the mean
+        // count per player-match. One match shows 0.40 of accuracy (96 bullets), 0.50 of hit regions (19 hits), 0.25 of
+        // reaction (11 reactions), 0.21 of aim error (23 notices). Against the old 200/40/8/20: round outcomes the same
+        // (Brier 0.216 vs 0.214 at 200 runs), players kept apart better (kills per round r 0.43 vs 0.36).
+        public static float AccuracyMean = 0.194f, AccuracyPrior = 145f;    // bullets
+        public static float HeadHitMean = 0.189f, LegHitMean = 0.082f, HitPrior = 19f;   // hits
+        public static float ReactionPrior = 34f, AimErrorPrior = 87f;       // reactions; notices
         /// <summary>How measured execution becomes simulation parameters when Fit is given none: tuned for the
         /// simulation's default perception. Set it (or pass one) to match the SimOptions the profiles will play with.</summary>
         public static ExecutionTransfer Transfer = ExecutionTransfer.Headless;
@@ -185,17 +189,26 @@ namespace ValorantReplay.Sim
             else if (f.Role == "Initiator" || f.Role == "Controller") style = PlayStyle.Support;
             else style = PlayStyle.Balanced;
             var t = f.Tally;
+            float aimError = Shrink((float)t.AimErrorSum, t.Notices, x.AimErrorMean, AimErrorPrior);
             return new Profile(skill, aggression, cohesion, style)
             {
                 Accuracy = Clamp(Shrink(t.Hits, t.Bullets, AccuracyMean, AccuracyPrior) / x.Accuracy, 0.02f, 0.95f),
                 Headshots = Shrink(t.HeadHits, t.Hits, HeadHitMean, HitPrior),
                 Legshots = Shrink(t.LegHits, t.Hits, LegHitMean, HitPrior),
                 Reaction = Clamp(Shrink((float)t.ReactionSum, t.Reactions, x.ReactionMean, ReactionPrior) - x.ReactionOffset, 0.08f, 1.2f),
-                Placement = x.PlacementFor(Shrink((float)t.AimErrorSum, t.Notices, x.AimErrorMean, AimErrorPrior)),
+                Placement = x.PlacementFor(aimError),
+                Wander = WanderFor(aimError, x),
             };
         }
 
         /// <summary>sum / count pulled towards mean as if prior more samples at the mean had been seen.</summary>
+        /// <summary>Profile.Wander from an aim error at notices: (aimError / population)^WanderPower, 0.2..3. Wandering
+        /// eyes and placement both add to the aim error; this lets a player better than the population glance less, which
+        /// placement alone cannot express once wandering eyes give the population's aim error by themselves.</summary>
+        public static float WanderFor(float aimError, ExecutionTransfer x) =>
+            Clamp((float)Math.Pow(Math.Max(0.01f, aimError) / x.AimErrorMean, WanderPower), 0.2f, 3f);
+        public static float WanderPower = 3f;
+
         public static float Shrink(float sum, float count, float mean, float prior) => (sum + prior * mean) / (count + prior);
 
         static float Clamp(float v, float lo, float hi) => v < lo ? lo : v > hi ? hi : v;
@@ -227,10 +240,13 @@ namespace ValorantReplay.Sim
             $"(population reaction {ReactionMean:0.000} s, aim error {AimErrorMean:0.0} deg)";
 
         /// <summary>SimOptions' default perception (field of view 104°, sight 80 m, footsteps 25 m, gunshots 60 m) and the
-        /// NavGrid's line of sight. 17 replays, learned behaviour held out, converged in 3 steps.</summary>
+        /// NavGrid's line of sight. 17 replays, learned behaviour held out, converged in 3 steps (re-tuned after the team
+        /// spacing (Profile.SpreadLoose/Tight), weapon classes, aim streaks, first-shot misses, range falloff, reaction spread and
+        /// wandering eyes (SimOptions), learned holds (HoldModel), wide corners and measured glancing (Profile.Wander)
+        /// changed).</summary>
         public static ExecutionTransfer Headless => new ExecutionTransfer
         {
-            ReactionMean = 0.465f, AimErrorMean = 12.34f, Accuracy = 0.723f, ReactionOffset = 0.074f, AimErrorBase = 9.0f, AimErrorSlope = 0.4f,
+            ReactionMean = 0.465f, AimErrorMean = 12.337f, Accuracy = 0.671f, ReactionOffset = 0.048f, AimErrorBase = 10.925f, AimErrorSlope = 0.334f,
         };
 
         /// <summary>ValoReplay round play's perception (field of view 103°, sight 120 m, footsteps 40 m, gunshots 100 m:
@@ -239,7 +255,7 @@ namespace ValorantReplay.Sim
         /// longer ranges mostly add far notices that rarely end in a shot).</summary>
         public static ExecutionTransfer ValoReplay => new ExecutionTransfer
         {
-            ReactionMean = 0.466f, AimErrorMean = 12.29f, Accuracy = 0.724f, ReactionOffset = 0.080f, AimErrorBase = 7.7f, AimErrorSlope = 0.46f,
+            ReactionMean = 0.466f, AimErrorMean = 12.294f, Accuracy = 0.664f, ReactionOffset = 0.056f, AimErrorBase = 9.273f, AimErrorSlope = 0.44f,
         };
     }
 

@@ -55,13 +55,17 @@ namespace ValorantReplay.Sim
         public LookModel Look;
         /// <summary>When attacks go in on this map (null = the attack plan's fixed timing).</summary>
         public TempoModel Tempo;
+        /// <summary>Where defenders hold each site (null = around the site's centre).</summary>
+        public HoldModel Holds;
 
         /// <summary>The same map (grid, sites, spawns shared) with other learned behaviour, e.g. learned without the
-        /// replay being predicted.</summary>
-        public SimMap WithLearned(LookModel look, TempoModel tempo) => new SimMap
+        /// replay being predicted. Keeps this map's Holds.</summary>
+        public SimMap WithLearned(LookModel look, TempoModel tempo) => WithLearned(look, tempo, Holds);
+
+        public SimMap WithLearned(LookModel look, TempoModel tempo, HoldModel holds) => new SimMap
         {
             Grid = Grid, Map = Map, Sites = Sites, AttackerSpawn = AttackerSpawn, DefenderSpawn = DefenderSpawn, Replays = Replays,
-            Look = look, Tempo = tempo,
+            Look = look, Tempo = tempo, Holds = holds,
         };
 
         public Site SiteNamed(string name) => Sites.Find(s => s.Name == name);
@@ -82,9 +86,12 @@ namespace ValorantReplay.Sim
 
         /// <summary>Builds a map from replays of the same map. Walkable space comes from every grounded player sample,
         /// sites from recorded plants (grouped by site letter), spawns from positions at each barrier drop, the look model
-        /// from where players looked in combat, the tempo model from when they planted.</summary>
+        /// from where players looked in combat, the tempo model from when they planted, the hold model from where
+        /// defenders stood before the first contact.</summary>
         public static SimMap FromReplays(IEnumerable<VrpReplay> replays, NavGrid.Builder builder = null)
         {
+            var list = replays as IList<VrpReplay> ?? new List<VrpReplay>(replays);
+            replays = list;
             builder = builder ?? new NavGrid.Builder();
             var map = new SimMap { Look = new LookModel(), Tempo = new TempoModel() };
             var plants = new Dictionary<string, List<Vector3>>();
@@ -130,6 +137,7 @@ namespace ValorantReplay.Sim
                 map.Sites.Add(new Site { Name = kv.Key, Center = c, Radius = Math.Max(4f, 1.5f * spread + 2f), Plants = kv.Value.Count });
             }
             map.Sites.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
+            map.Holds = HoldModel.FromReplays(list, map.Sites);
             return map;
         }
 

@@ -28,30 +28,32 @@ namespace ValorantReplay.Sim
         public string Name = "";
         public PlayStyle Style;
         public float Aggression = 0.5f, Cohesion = 0.5f;
+        /// <summary>Profile.Trust: how much it acts on teammates' callouts rather than its own eyes and ears.</summary>
+        public float Trust = 0.5f;
         public string Description = "";
 
         public override string ToString() => Name;
 
         /// <summary>Takes first contact, plays ahead of the team.</summary>
-        public static readonly BotArchetype Entry = new BotArchetype { Name = "Entry", Style = PlayStyle.Entry, Aggression = 0.85f, Cohesion = 0.5f,
+        public static readonly BotArchetype Entry = new BotArchetype { Name = "Entry", Style = PlayStyle.Entry, Aggression = 0.85f, Cohesion = 0.5f, Trust = 0.5f,
             Description = "takes first contact and the space behind it" };
         /// <summary>Plays off the team: close spacing, fast callouts, first to trade.</summary>
-        public static readonly BotArchetype Initiator = new BotArchetype { Name = "Initiator", Style = PlayStyle.Support, Aggression = 0.45f, Cohesion = 0.85f,
+        public static readonly BotArchetype Initiator = new BotArchetype { Name = "Initiator", Style = PlayStyle.Support, Aggression = 0.45f, Cohesion = 0.85f, Trust = 0.8f,
             Description = "stays close to the team, calls fast, trades first" };
         /// <summary>No style bias, middle knobs.</summary>
-        public static readonly BotArchetype Flex = new BotArchetype { Name = "Flex", Style = PlayStyle.Balanced, Aggression = 0.5f, Cohesion = 0.55f,
+        public static readonly BotArchetype Flex = new BotArchetype { Name = "Flex", Style = PlayStyle.Balanced, Aggression = 0.5f, Cohesion = 0.55f, Trust = 0.5f,
             Description = "no bias, middle of every knob" };
         /// <summary>Plays away from the team, falls back rather than trading.</summary>
-        public static readonly BotArchetype Lurker = new BotArchetype { Name = "Lurker", Style = PlayStyle.Lurker, Aggression = 0.55f, Cohesion = 0.15f,
+        public static readonly BotArchetype Lurker = new BotArchetype { Name = "Lurker", Style = PlayStyle.Lurker, Aggression = 0.55f, Cohesion = 0.15f, Trust = 0.2f,
             Description = "plays apart from the team, rarely trades" };
         /// <summary>Holds an angle on site and does not leave it.</summary>
-        public static readonly BotArchetype Anchor = new BotArchetype { Name = "Anchor", Style = PlayStyle.Anchor, Aggression = 0.2f, Cohesion = 0.6f,
+        public static readonly BotArchetype Anchor = new BotArchetype { Name = "Anchor", Style = PlayStyle.Anchor, Aggression = 0.2f, Cohesion = 0.6f, Trust = 0.6f,
             Description = "holds angles, does not peek" };
         /// <summary>Passive but tight with the team: lets others take contact, then trades them.</summary>
-        public static readonly BotArchetype Baiter = new BotArchetype { Name = "Baiter", Style = PlayStyle.Support, Aggression = 0.15f, Cohesion = 0.7f,
+        public static readonly BotArchetype Baiter = new BotArchetype { Name = "Baiter", Style = PlayStyle.Support, Aggression = 0.15f, Cohesion = 0.7f, Trust = 0.8f,
             Description = "lets others take contact, then trades" };
         /// <summary>Solo-queue duelist: all aggression, ignores the team.</summary>
-        public static readonly BotArchetype Rusher = new BotArchetype { Name = "Rusher", Style = PlayStyle.Entry, Aggression = 1f, Cohesion = 0.1f,
+        public static readonly BotArchetype Rusher = new BotArchetype { Name = "Rusher", Style = PlayStyle.Entry, Aggression = 1f, Cohesion = 0.1f, Trust = 0.1f,
             Description = "full aggression, ignores the team" };
 
         public static readonly BotArchetype[] All = { Entry, Initiator, Flex, Lurker, Anchor, Baiter, Rusher };
@@ -77,21 +79,34 @@ namespace ValorantReplay.Sim
 
     public static class Bots
     {
-        /// <summary>Real-game stats per tier. Average is the corpus population (ProfileFitter's means and the transfer's
-        /// reaction and aim error); the steps either side span what single players in the replays measure.</summary>
-        public static TierStats Stats(BotTier tier)
+        /// <summary>Real-game stats per tier: the corpus population (ProfileFitter's means and the transfer's reaction and
+        /// aim error) moved by the tier's percentile of the between-player spread. The spreads are measured on the corpus
+        /// (170 player-matches) with sampling noise taken out by split-half reliability (odd vs even rounds of each
+        /// player-match): one match shows 0.40 of accuracy, 0.63 of head share, 0.39 of leg share, 0.25 of reaction and
+        /// 0.21 of aim error, so the between-player spread is much narrower than single matches suggest.
+        /// A tier is equally good at everything; Novice and Pro (p5, p98) extrapolate past most of the corpus.</summary>
+        public static TierStats Stats(BotTier tier, ExecutionTransfer transfer = null)
         {
-            switch (tier)
+            var x = transfer ?? ProfileFitter.Transfer;
+            float z = Percentile[(int)tier];
+            return new TierStats
             {
-                case BotTier.Novice:  return new TierStats { Accuracy = 0.11f, HeadHits = 0.08f, LegHits = 0.14f, Reaction = 0.66f, AimError = 18f,  Sense = 0.1f };
-                case BotTier.Casual:  return new TierStats { Accuracy = 0.15f, HeadHits = 0.13f, LegHits = 0.11f, Reaction = 0.56f, AimError = 15f,  Sense = 0.3f };
-                case BotTier.Skilled: return new TierStats { Accuracy = 0.23f, HeadHits = 0.25f, LegHits = 0.07f, Reaction = 0.40f, AimError = 11f,  Sense = 0.65f };
-                case BotTier.Elite:   return new TierStats { Accuracy = 0.27f, HeadHits = 0.32f, LegHits = 0.06f, Reaction = 0.34f, AimError = 10f,  Sense = 0.8f };
-                case BotTier.Pro:     return new TierStats { Accuracy = 0.31f, HeadHits = 0.40f, LegHits = 0.05f, Reaction = 0.28f, AimError = 9f,   Sense = 0.95f };
-                default:              return new TierStats { Accuracy = ProfileFitter.AccuracyMean, HeadHits = ProfileFitter.HeadHitMean, LegHits = ProfileFitter.LegHitMean,
-                                                             Reaction = 0.465f, AimError = 12.34f, Sense = 0.5f };
-            }
+                Accuracy = Math.Max(0.03f, ProfileFitter.AccuracyMean + z * AccuracySd),
+                HeadHits = Math.Max(0.02f, ProfileFitter.HeadHitMean + z * HeadHitSd),
+                LegHits = Math.Max(0.02f, ProfileFitter.LegHitMean - z * LegHitSd),
+                Reaction = x.ReactionMean - z * ReactionSd,
+                AimError = Math.Max(0f, x.AimErrorMean - z * AimErrorSd),
+                Sense = Sense[(int)tier],
+            };
         }
+
+        /// <summary>Between-player standard deviations on the corpus: sqrt(split-half reliability) x observed sd (see Stats).</summary>
+        public static float AccuracySd = 0.042f, HeadHitSd = 0.086f, LegHitSd = 0.038f, ReactionSd = 0.054f, AimErrorSd = 2.5f;
+        /// <summary>Each tier's place in the population, as a standard normal z: p5, p25, p50, p75, p90, p98.</summary>
+        static readonly float[] Percentile = { -1.65f, -0.67f, 0f, 0.67f, 1.28f, 2.05f };
+        /// <summary>Profile.Skill per tier. Nothing in the replays measures it, and calibration finds it has no effect on
+        /// outcomes (vrpsim calibrate --neutral sense), so these are only spread evenly.</summary>
+        static readonly float[] Sense = { 0.1f, 0.3f, 0.5f, 0.65f, 0.8f, 0.95f };
 
         public static readonly BotTier[] Tiers = { BotTier.Novice, BotTier.Casual, BotTier.Average, BotTier.Skilled, BotTier.Elite, BotTier.Pro };
 
@@ -103,14 +118,16 @@ namespace ValorantReplay.Sim
         public static Profile Split(BotTier aim, BotTier sense, BotArchetype archetype, ExecutionTransfer transfer = null)
         {
             var x = transfer ?? ProfileFitter.Transfer;
-            var a = Stats(aim);
-            return new Profile(Stats(sense).Sense, archetype.Aggression, archetype.Cohesion, archetype.Style)
+            var a = Stats(aim, x);
+            return new Profile(Stats(sense, x).Sense, archetype.Aggression, archetype.Cohesion, archetype.Style)
             {
+                Trust = archetype.Trust,
                 Accuracy = Profile.Clamp01(a.Accuracy / x.Accuracy),
                 Headshots = a.HeadHits,
                 Legshots = a.LegHits,
                 Reaction = Math.Max(0.08f, a.Reaction - x.ReactionOffset),
                 Placement = x.PlacementFor(a.AimError),
+                Wander = ProfileFitter.WanderFor(a.AimError, x),
             };
         }
 

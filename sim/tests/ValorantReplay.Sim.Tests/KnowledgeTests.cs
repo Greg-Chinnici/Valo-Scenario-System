@@ -31,35 +31,39 @@ public class KnowledgeTests
     }
 
     [Fact]
-    public void Callouts_CohesionControlsDelayAndDrops()
+    public void Callouts_CohesionAndSenseControlDelayDropsAndPrecision()
     {
-        int Delivered(Profile caller, float after)
+        (int got, float err) Delivered(Profile caller, float after)
         {
             int got = 0;
+            float err = 0f;
             var rng = new Random(1);
             for (int i = 0; i < 400; i++)
             {
                 var board = new TeamBlackboard(0, 2);
-                board.Callout(At(0f, 1f), caller, 0f, rng);
+                board.Callout(At(0f, 1f), 0, caller, 0f, rng);
                 board.Update(after);
-                if (board.Board.TryGet(1, out _)) got++;
+                if (board.Board.TryGet(1, out var s)) { got++; err += System.Numerics.Vector3.Distance(s.Position, At(0f, 1f).Position); }
             }
-            return got;
+            return (got, got > 0 ? err / got : 0f);
         }
-        var tight = Profile.Default.With(cohesion: 1f);
-        var loose = Profile.Default.With(cohesion: 0f);
-        Assert.Equal(0, Delivered(tight, 0.3f));                    // nothing arrives instantly
-        Assert.InRange(Delivered(tight, 0.5f), 360, 400);          // 0.4 s delay, 5% dropped
-        Assert.Equal(0, Delivered(loose, 2f));                      // 2.5 s delay
-        Assert.InRange(Delivered(loose, 3f), 160, 240);            // half dropped
+        var sharp = new Profile(1f, 0.5f, 1f);       // sense 1, cohesion 1: 0.4 s, 5% dropped
+        var quiet = new Profile(0.5f, 0.5f, 0f);     // average sense, never talks much
+        var lost = new Profile(0f, 0.5f, 0.5f);      // talks, but slow and vague
+        Assert.Equal(0, Delivered(sharp, 0.3f).got);                 // nothing arrives instantly
+        Assert.InRange(Delivered(sharp, 0.5f).got, 360, 400);
+        Assert.InRange(Delivered(quiet, 3f).got, 200, 260);         // drops mostly follow cohesion (43%)
+        Assert.InRange(Delivered(lost, 3f).got, 235, 290);          // ... less so sense (34%)
+        Assert.Equal(0, Delivered(lost, 1.7f).got);                  // slow: 1.87 s
+        Assert.True(Delivered(lost, 3f).err > 3f * Delivered(sharp, 3f).err, "a sharp caller says where far more precisely");
 
         var board2 = new TeamBlackboard(0, 2);
-        board2.Callout(At(0f, 1f), tight, 0f, new Random(3));
+        board2.Callout(At(0f, 1f), 0, sharp, 0f, new Random(3));
         board2.Update(1f);
-        Assert.True(board2.Board.TryGet(1, out var s));
-        Assert.Equal(Cue.Callout, s.Cue);
-        Assert.Equal(0.9f, s.Certainty, 4);
-        Assert.Equal(0f, s.Time);                                   // stamped with when it was seen
+        Assert.True(board2.Board.TryGet(1, out var s2));
+        Assert.Equal(Cue.Callout, s2.Cue);
+        Assert.Equal(0.95f, s2.Certainty, 4);
+        Assert.Equal(0f, s2.Time);                                   // stamped with when it was seen
     }
 
     static float[] Scores(Situation s, Profile p)
@@ -131,7 +135,14 @@ public class KnowledgeTests
     public void Weapons_GuessedFromClass()
     {
         Assert.Same(WeaponStats.Vandal, WeaponStats.For("AssaultRifle_AK"));
-        Assert.Same(WeaponStats.Pistol, WeaponStats.For("LugerPistol"));
+        Assert.Same(WeaponStats.Ghost, WeaponStats.For("LugerPistol"));
+        Assert.Same(WeaponStats.Pistol, WeaponStats.For("BasePistol"));
+        Assert.Same(WeaponStats.Smg, WeaponStats.For("SubMachineGun_MP5"));
+        Assert.Same(WeaponStats.Smg, WeaponStats.For("Vector"));
+        Assert.Same(WeaponStats.MachineGun, WeaponStats.For("HeavyMachineGun"));
+        Assert.Same(WeaponStats.Marshal, WeaponStats.For("LeverSniperRifle"));
+        Assert.Same(WeaponStats.Outlaw, WeaponStats.For("DS_Gun"));
+        Assert.Same(WeaponStats.Sniper, WeaponStats.For("BoltSniper"));
         Assert.Same(WeaponStats.Rifle, WeaponStats.For(""));
         Assert.Equal(120f * 0.25f, WeaponStats.Shotgun.DamageAt(20f, 120f), 3);
         Assert.Equal(40f, WeaponStats.Vandal.DamageAt(60f, 40f));

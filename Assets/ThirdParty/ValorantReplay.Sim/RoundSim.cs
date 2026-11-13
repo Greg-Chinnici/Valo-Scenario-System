@@ -50,6 +50,65 @@ namespace ValorantReplay.Sim
         /// corpus: 1 predicts winners best (Brier 0.222 vs 0.232 at 0.5, 0.236 without), though it retakes too often
         /// (defused 23% vs 18% recorded; 0.5 matches the split).</summary>
         public float DefenderUrgency = 1f;
+        /// <summary>Profile.Spread multiplier once the spike is planted (the recorded spacing it is set from is measured
+        /// before the plant). Swept on the corpus at 200 runs: 0.6 predicts winners best (Brier 0.214 vs 0.219 at 0.3,
+        /// 0.218 at 1), though it retakes too often (defused 33% vs 18% recorded; 0.3 gives 27%, 1 gives 36%).</summary>
+        public float PostPlantSpread = 0.6f;
+        /// <summary>Aim streaks: within a spray at one target (shots no more than SprayGap apart), the chance a bullet hits
+        /// after the previous one hit, over the chance after it missed. Real aim is on or off the target, so hits come in
+        /// runs: recorded rifles hit 40.8% after a hit and 11.5% after a miss (3.55; 2,296 and 9,128 bullets), first
+        /// bullets at the average. A player's average accuracy is kept: AimStreaks only decides how hits cluster.
+        /// 1 = every bullet independent.</summary>
+        public float AimStreaks = 3.55f;
+        public float SprayGap = 0.25f;
+        /// <summary>Flicks: the first shot at a newly engaged enemy lands off target by a half-normal draw with mean
+        /// MissBase + MissPerDegree x the turn it needed (at most MissMax), past the target (overswing) with chance
+        /// Overswing, and hits that much less often: x (1 + MissHitSlope (MissMean - miss)). Recorded first shots after a
+        /// notice (vrpsim duels): mean miss 2.6 / 4.9 / 8.5 deg after 0-5 / 5-15 / 15-30 deg flicks, overshot 33-47% of
+        /// flicks over 5 deg, hit 31 / 26 / 21%; 4.0 deg on average. The miss shows in the shooter's yaw for that shot.</summary>
+        /// <summary>Hit chance with distance: x (10 m / distance)^AccuracyFalloff, distance at least AccuracyNear. Recorded
+        /// first shots after a notice hit 43% at 0-10 m, 31% at 10-20, 22% at 20-35, 25% beyond (n 134).</summary>
+        public float AccuracyFalloff = 0.4f;
+        public float AccuracyNear = 4f;
+        public float MissBase = 2.2f;
+        public float MissPerDegree = 0.4f;
+        public float MissMax = 9f;
+        public float MissMean = 4f;
+        public float MissHitSlope = 0.055f;
+        public float Overswing = 0.4f;
+        /// <summary>Reaction times are lognormal around Profile.ReactionTime with this sigma (recorded notice to first
+        /// aimed shot: median 0.43 s, middle half 0.25-0.62 s; 0.7 gives 0.45 s, 0.30-0.60 s in vrpsim duels).</summary>
+        public float ReactionSpread = 0.7f;
+        /// <summary>Seconds to find a shooter one only knows of because it is shooting at you (not in view), on top of
+        /// reacting and turning. With GlanceRate 0.15 the first to notice wins 70% / 69% of duels after a 0.25-0.5 / 0.5-1.5 s
+        /// head start (recorded 73% / 70%; 56% / 57% before either existed).</summary>
+        public float LocateDelay = 0.8f;
+        /// <summary>Wandering eyes: an AI agent out of a fight glances GlanceMin..GlanceMax deg away for 0.3-1 s, on average
+        /// GlanceRate x 2 (1 - Profile.Skill) x Profile.GlanceWander times a second (GlanceRate at average game sense and
+        /// crosshair discipline, almost never at the top),
+        /// unless its game sense (chance Profile.Skill) keeps its eyes on a threat it believes in. Being caught looking away makes one-sided duels (recorded 18% of duels, 13% at 0.15, 8% without); more glances
+        /// mostly turn same-tick duels (recorded 74%; 68% at 0.15, 61% at 0.3) into short head starts real duels rarely have.</summary>
+        public float GlanceRate = 0.15f;
+        public float GlanceMin = 60f;
+        public float GlanceMax = 150f;
+        /// <summary>Game sense in movement: an AI agent's path costs (1 + RouteCare x Skill x exposure) per metre, where
+        /// exposure sums, over its most pressing believed enemies (MaxRouteThreats, within ExposureRange), certainty x
+        /// nearness for every node that enemy could see (NavGrid line of sight). 0 = everyone takes the shortest path.
+        /// Off by default: at 3 it made no difference to who wins (Pro vs Novice sense 49%) and simulations ~2.8x slower.</summary>
+        public float RouteCare = 0f;
+        /// <summary>Taking corners wide: AI paths cost (1 + CornerCost (1 - clearance / CornerMargin)) per metre on nodes
+        /// closer than CornerMargin to a wall (NavGrid.Clearance), so agents swing wide instead of hugging the inside of a
+        /// corner and see round it from further away (recorded duels open at 0-10 m 12% of the time, agents on shortest
+        /// paths 33%, 14% at CornerCost 6 / margin 3 m). Scaled by 1 - urgency; orders and the spike carrier in an execute
+        /// take the direct line. 0 = shortest paths.</summary>
+        public float CornerCost = 6f;
+        public float CornerMargin = 3f;
+        public float ExposureRange = 35f;
+        public int MaxRouteThreats = 3;
+        /// <summary>Game sense in pacing: advancing or peeking with a believed enemy within StealthRange, an agent walks
+        /// (no footsteps) when Skill x (1 - urgency) exceeds StealthSense, whatever its aggression.</summary>
+        public float StealthSense = 0.5f;
+        public float StealthRange = 35f;
     }
 
     public sealed class AgentSetup
@@ -126,6 +185,7 @@ namespace ValorantReplay.Sim
         // measurement (Measurements' definitions): in view without the "shot at by" shortcut, last time in view, and the
         // pending notice a reaction is timed from (-1 = none)
         readonly bool[,] inView;
+        readonly bool[,] onlyShotAt;        // noticed only because it is shooting at us, not in view
         readonly float[,] lastInView, noticedAt;
         // independent streams (SimRandom): round-level draws, and per agent aim / decisions / senses / callouts
         readonly Random roundRng;
@@ -163,6 +223,7 @@ namespace ValorantReplay.Sim
             agents = new List<SimAgent>(n);
             sees = new bool[n, n];
             inView = new bool[n, n];
+            onlyShotAt = new bool[n, n];
             lastInView = new float[n, n];
             noticedAt = new float[n, n];
             for (int i = 0; i < n; i++)
@@ -315,9 +376,32 @@ namespace ValorantReplay.Sim
 
         bool Clear(Vector3 from, Vector3 to) => SightTest != null ? SightTest(from, to) : Map.Grid.LineOfSight(from, to);
 
-        /// <summary>Replaces the agents' own beliefs and the callout board for every decision (e.g. Unity's knowledge
-        /// blackboard). Null = the simulation's own.</summary>
+        /// <summary>An outside team knowledge model for every decision (e.g. Unity's knowledge blackboard), replacing or
+        /// supplementing the agents' own beliefs and the callout board (BeliefSourceMode). Null = the simulation's own.</summary>
         public IBeliefSource BeliefSource { get; set; }
+        /// <summary>How BeliefSource combines with the agents' own knowledge. Replace: decisions read only it (every agent
+        /// on a team knows the same). Supplement: each agent keeps its own beliefs (its memory, its hearing) and the
+        /// callouts it trusts, as without a source, and the source adds what it knows on top, weighted by the agent's
+        /// trust like a callout.</summary>
+        public BeliefSourceMode BeliefSourceMode { get; set; } = BeliefSourceMode.Replace;
+
+        /// <summary>How much reader believes caller's callouts, 0..1, overriding reader's Profile.Trust (NaN = back to it).</summary>
+        public void SetTrust(int reader, int caller, float trust)
+        {
+            trustIn ??= new float[agents.Count, agents.Count];
+            if (!trustOverrides) { for (int i = 0; i < agents.Count; i++) for (int j = 0; j < agents.Count; j++) trustIn[i, j] = float.NaN; trustOverrides = true; }
+            trustIn[reader, caller] = float.IsNaN(trust) ? float.NaN : Profile.Clamp01(trust);
+        }
+
+        float[,] trustIn;
+        bool trustOverrides;
+
+        /// <summary>Multiplier on the certainty of what caller told reader (caller -1: an outside source).</summary>
+        float TrustScale(SimAgent reader, int caller)
+        {
+            float t = trustOverrides && caller >= 0 && !float.IsNaN(trustIn[reader.Index, caller]) ? trustIn[reader.Index, caller] : reader.Profile.Trust;
+            return Profile.Lerp(0.5f, 1.5f, t);
+        }
 
         /// <summary>Hands an agent to the user. Everyone else keeps following the recording until they notice.</summary>
         public void TakeControl(int agent)
@@ -548,7 +632,7 @@ namespace ValorantReplay.Sim
             directors[0].Update(this);
             directors[1].Update(this);
             foreach (var a in agents)
-                if (a.Alive && a.Mode == AgentMode.Ai) Think(a, dt);
+                if (a.Alive && a.Mode == AgentMode.Ai) { Think(a, dt); Glance(a); }
             foreach (var a in agents)
                 if (a.Alive && a.Mode == AgentMode.Ai && a.Action != AgentAction.Plant && a.Action != AgentAction.Defuse) Engage(a);
             ApplyHits();
@@ -735,13 +819,14 @@ namespace ValorantReplay.Sim
             Measure(a, b, view);
             bool was = sees[a.Index, b.Index];
             sees[a.Index, b.Index] = noticed;
+            onlyShotAt[a.Index, b.Index] = noticed && !view;
             if (!noticed) return;
             var s = new Sighting { Enemy = b.Index, Position = b.Position, Time = Time, Certainty = 1f, Cue = Cue.Seen };
             a.Beliefs.Observe(s, Time, a.Profile.MemoryHalfLife);
-            if (!was || Time - a.LastCallout[b.Index] >= Options.CalloutRefresh)
+            if (!was || Time - a.LastCallout[b.Index] >= Options.CalloutRefresh * a.Profile.CalloutRefreshScale)
             {
                 a.LastCallout[b.Index] = Time;
-                boards[a.Team].Callout(s, a.Profile, Time, commsRng[a.Index]);
+                boards[a.Team].Callout(s, a.Index, a.Profile, Time, commsRng[a.Index]);
             }
             if (!was) a.WantsDecision = true;
             if (a.Mode == AgentMode.Replay && b.Mode != AgentMode.Replay) Diverge(a);
@@ -769,10 +854,10 @@ namespace ValorantReplay.Sim
             var senses = sensesRng[a.Index];
             var off = new Vector3((float)(senses.NextDouble() * 2 - 1) * err, 0f, (float)(senses.NextDouble() * 2 - 1) * err);
             var s = new Sighting { Enemy = b.Index, Position = b.Position + off, Time = Time, Certainty = certainty * (1f - 0.5f * d / range), Cue = Cue.Heard };
-            if (a.Beliefs.Observe(s, Time, a.Profile.MemoryHalfLife) && Time - a.LastCallout[b.Index] >= Options.CalloutRefresh)
+            if (a.Beliefs.Observe(s, Time, a.Profile.MemoryHalfLife) && Time - a.LastCallout[b.Index] >= Options.CalloutRefresh * a.Profile.CalloutRefreshScale)
             {
                 a.LastCallout[b.Index] = Time;
-                boards[a.Team].Callout(s, a.Profile, Time, commsRng[a.Index]);
+                boards[a.Team].Callout(s, a.Index, a.Profile, Time, commsRng[a.Index]);
             }
             if (forcesDivergence && a.Mode == AgentMode.Replay && b.Mode != AgentMode.Replay) Diverge(a);
         }
@@ -800,20 +885,31 @@ namespace ValorantReplay.Sim
         /// <summary>The better of the agent's own memory and its team board for one enemy.</summary>
         internal bool Believed(SimAgent a, int enemy, out Sighting s, out float certainty)
         {
-            if (BeliefSource != null)
+            if (BeliefSource != null && BeliefSourceMode == BeliefSourceMode.Replace)
             {
                 if (!BeliefSource.Believes(a.Team, enemy, out var at, out certainty) || certainty <= 0f) { s = default; certainty = 0f; return false; }
                 certainty = Math.Min(1f, certainty);
                 s = new Sighting { Enemy = enemy, Position = at, Time = Time, Certainty = certainty, Cue = Cue.Callout };
                 return true;
             }
+            // own beliefs, then callouts weighted by how much this agent trusts whoever made them, then an outside source
             float hl = a.Profile.MemoryHalfLife;
             bool own = a.Beliefs.TryGet(enemy, out var mine);
             bool team = boards[a.Team].Board.TryGet(enemy, out var shared);
-            float cm = own ? mine.CertaintyAt(Time, hl) : 0f, ct = team ? shared.CertaintyAt(Time, hl) : 0f;
-            if (!own && !team) { s = default; certainty = 0f; return false; }
+            float cm = own ? mine.CertaintyAt(Time, hl) : 0f;
+            float ct = team ? Math.Min(1f, shared.CertaintyAt(Time, hl) * TrustScale(a, shared.Caller)) : 0f;
             s = cm >= ct ? mine : shared;
             certainty = Math.Max(cm, ct);
+            if (BeliefSource != null && BeliefSource.Believes(a.Team, enemy, out var p, out float cx))
+            {
+                cx = Math.Min(1f, cx * TrustScale(a, -1));
+                if (cx > certainty)
+                {
+                    s = new Sighting { Enemy = enemy, Position = p, Time = Time, Certainty = cx, Cue = Cue.Callout, Caller = -1 };
+                    certainty = cx;
+                }
+            }
+            if (certainty <= 0f) { s = default; certainty = 0f; return false; }
             return true;
         }
 
@@ -855,6 +951,8 @@ namespace ValorantReplay.Sim
         {
             int best = -1;
             float bd = float.MaxValue;
+            // someone ordered to pick it up is the one going for it
+            foreach (var a in agents) if (a.Alive && a.Attacking && a.Mode == AgentMode.Ai && a.Order.Type == OrderType.PickUp) return a.Index;
             foreach (var a in agents)
             {
                 if (!a.Alive || !a.Attacking || a.Mode != AgentMode.Ai) continue;
@@ -966,7 +1064,7 @@ namespace ValorantReplay.Sim
                 if (m == a || !m.Alive || m.Team != a.Team) continue;
                 var away = a.Position - m.Position;
                 away.Y = 0f;
-                float d = away.Length(), spacing = Math.Max(Options.Spacing, a.Profile.Spread * 0.6f);
+                float d = away.Length(), spacing = Math.Max(Options.Spacing, SpreadOf(a) * 0.6f);
                 if (d >= spacing) continue;
                 if (d < 1e-3f)
                 {
@@ -1010,6 +1108,7 @@ namespace ValorantReplay.Sim
             };
             s.TimePressure = SpikeState == SpikeStatus.Planted ? Profile.Clamp01(1f - SpikeTimer / Options.SpikeDuration) : Profile.Clamp01(1f - Remaining / Options.RoundTime);
             s.Urgency = Urgency(a);
+            a.Urgency = s.Urgency;
             s.AtObjective = s.ObjectiveDistance <= objRadius;
 
             Vector3 threatPos = default;
@@ -1060,8 +1159,11 @@ namespace ValorantReplay.Sim
                 case AgentAction.Trade: a.Goal = tradePos; break;
                 default: a.Goal = a.Position; break;
             }
-            // passive players walk (silently) near known enemies; aggressive ones (or anyone short of time) run
-            a.Walking = UtilityBrain.EffectiveAggression(s, a.Profile) < 0.5f && (a.Action == AgentAction.Peek || (a.Action == AgentAction.Advance && s.NearestThreat < 25f));
+            // passive players walk (silently) near known enemies; aggressive ones (or anyone short of time) run, unless their
+            // game sense says to keep quiet while there is time
+            bool approaching = a.Action == AgentAction.Peek || a.Action == AgentAction.Advance;
+            a.Walking = (UtilityBrain.EffectiveAggression(s, a.Profile) < 0.5f && (a.Action == AgentAction.Peek || (a.Action == AgentAction.Advance && s.NearestThreat < 25f)))
+                || (approaching && s.NearestThreat < Options.StealthRange && a.Profile.Skill * (1f - s.Urgency) > Options.StealthSense);
             // where to look while holding: at a believed threat; else an angle real players check here (Map.Look); else the
             // objective or the attackers' way in. The angle and this player's placement error are drawn per decision.
             var lookRandom = lookRng[a.Index];
@@ -1120,16 +1222,26 @@ namespace ValorantReplay.Sim
                 if (closest) return objective;
             }
             if (SpikeState == SpikeStatus.Dropped && a.Attacking && NearestAiAttackerToSpike() == a.Index) return objective;
+            // a defender holding a learned spot holds exactly there
+            if (!a.Attacking && SpikeState != SpikeStatus.Planted && a.HoldSite != null && a.HoldSite == a.AssignedSite && Vector3.Distance(objective, a.HoldSpot) < 0.01f) return objective;
             // the spike carrier executing on its site goes to the plant spots themselves, not a spot around them that can
             // lie outside the site
             if (SpikeState == SpikeStatus.Carried && SpikeCarrier == a.Index && directors[a.Team].Executing) return objective;
             double ang = a.Index * 2.399;   // golden angle: neighbours by index end up far apart
-            var p = objective + new Vector3((float)Math.Cos(ang), 0f, (float)Math.Sin(ang)) * a.Profile.Spread;
+            float spread = SpreadOf(a);
+            var p = objective + new Vector3((float)Math.Cos(ang), 0f, (float)Math.Sin(ang)) * spread;
+            // aggressive players take the front of the formation (towards the enemy's side), passive ones the back
+            var front = a.Attacking ? objective - Map.AttackerSpawn : Map.AttackerSpawn - objective;
+            front.Y = 0f;
+            if (front.LengthSquared() > 1f) p += Vector3.Normalize(front) * ((a.Profile.Aggression - 0.5f) * spread);
             int n = Map.Grid.Nearest(p, 3f);
             if (n < 0) return objective;
             var q = Map.Grid.Position(n);
             return Math.Abs(q.Y - objective.Y) < 2f ? q : objective;
         }
+
+        // Profile.Spread is fitted to the spacing before the plant; around a planted spike teams play tighter
+        float SpreadOf(SimAgent a) => a.Profile.Spread * (SpikeState == SpikeStatus.Planted ? Options.PostPlantSpread : 1f);
 
         Vector3 Retreat(SimAgent a, Vector3 threat)
         {
@@ -1154,7 +1266,19 @@ namespace ValorantReplay.Sim
             {
                 a.PathGoal = goal;
                 a.PathIndex = 0;
-                if (!g.FindPath(g.Nearest(a.Position), g.Nearest(goal, 6f), a.Path)) a.Path.Clear();
+                var exposure = a.Mode == AgentMode.Ai ? Exposure(a) : null;
+                Func<int, float> cost = exposure;
+                // wide corners when there is time; orders and a ticking clock take the direct line
+                float k = Options.CornerCost * (1f - a.Urgency);
+                bool carrying = SpikeState == SpikeStatus.Carried && SpikeCarrier == a.Index && directors[a.Team].Executing;
+                if (a.Mode == AgentMode.Ai && k > 0f && a.Order.Type == OrderType.None && !carrying)
+                {
+                    var clear = g.Clearance;
+                    float margin = Options.CornerMargin;
+                    cost = exposure == null ? (Func<int, float>)(n => k * Math.Max(0f, 1f - clear[n] / margin))
+                        : n => k * Math.Max(0f, 1f - clear[n] / margin) + exposure(n);
+                }
+                if (!g.FindPath(g.Nearest(a.Position), g.Nearest(goal, 6f), a.Path, cost)) a.Path.Clear();
             }
             float speed = a.Walking ? Options.WalkSpeed : Options.RunSpeed;
             if (a.Action == AgentAction.Advance || a.Action == AgentAction.Peek) speed *= a.Profile.Pace;
@@ -1179,6 +1303,88 @@ namespace ValorantReplay.Sim
                     + a.LookOffset;
         }
 
+        /// <summary>A defender's hold spot on its assigned site, from Map.Holds (drawn once per site, clear of teammates'
+        /// spots); false without a hold model or spots for the site.</summary>
+        internal bool HoldSpotFor(SimAgent a, out Vector3 spot)
+        {
+            spot = default;
+            if (Map.Holds == null || a.Attacking || string.IsNullOrEmpty(a.AssignedSite)) return false;
+            if (a.HoldSite != a.AssignedSite)
+            {
+                var taken = new List<Vector3>();
+                foreach (var m in agents) if (m != a && m.Team == a.Team && m.Alive && m.HoldSite == a.AssignedSite) taken.Add(m.HoldSpot);
+                if (!Map.Holds.Draw(a.AssignedSite, lookRng[a.Index], taken, out var s)) return false;
+                a.HoldSite = a.AssignedSite;
+                a.HoldSpot = s;
+            }
+            spot = a.HoldSpot;
+            return true;
+        }
+
+        /// <summary>Wandering eyes (GlanceRate): out of a fight, now and then look GlanceMin..GlanceMax deg off where the
+        /// agent means to look, for 0.3-1 s; game sense keeps the eyes on a believed threat. Applied after Think set the
+        /// yaw, as an offset (taken off again when Think left the yaw alone).</summary>
+        void Glance(SimAgent a)
+        {
+            if (a.GlanceApplied != 0f && a.Yaw == a.YawWithGlance) a.Yaw -= a.GlanceApplied;
+            a.GlanceApplied = 0f;
+            bool busy = (a.Target >= 0 && sees[a.Index, a.Target]) || a.Action == AgentAction.Plant || a.Action == AgentAction.Defuse;
+            float rate = Options.GlanceRate * 2f * (1f - a.Profile.Skill) * a.Profile.GlanceWander;
+            if (rate <= 0f || busy) { a.GlanceUntil = -1f; return; }
+            var rng = lookRng[a.Index];
+            if (Time >= a.GlanceUntil && Time >= a.NextGlance)
+            {
+                a.NextGlance = Time + (float)(-Math.Log(1.0 - rng.NextDouble()) / rate);
+                if (!(a.WatchesThreat && rng.NextDouble() < a.Profile.Skill))
+                {
+                    a.GlanceOffset = (rng.NextDouble() < 0.5 ? -1f : 1f) * Profile.Lerp(Options.GlanceMin, Options.GlanceMax, (float)rng.NextDouble());
+                    a.GlanceUntil = Time + Profile.Lerp(0.3f, 1f, (float)rng.NextDouble());
+                }
+            }
+            if (Time >= a.GlanceUntil) return;
+            a.Yaw += a.GlanceOffset;
+            a.GlanceApplied = a.GlanceOffset;
+            a.YawWithGlance = a.Yaw;
+        }
+
+        /// <summary>Extra path cost per metre for agent a (RouteCare): how exposed each node is to the enemies a believes in,
+        /// scaled by its game sense; null when it does not care or believes in no one.</summary>
+        Func<int, float> Exposure(SimAgent a)
+        {
+            float care = Options.RouteCare * a.Profile.Skill;
+            if (care <= 0f || Options.MaxRouteThreats <= 0) return null;
+            var threats = new List<(Vector3 eye, float weight)>();
+            foreach (var e in agents)
+            {
+                if (!e.Alive || e.Team == a.Team || !Believed(a, e.Index, out var sight, out float c) || c < 0.2f) continue;
+                if (SimSpace.FlatDistance(sight.Position, a.Position) > Options.ExposureRange * 2f) continue;
+                threats.Add((sight.Position + new Vector3(0f, 0.65f, 0f), c));
+            }
+            if (threats.Count == 0) return null;
+            if (threats.Count > Options.MaxRouteThreats)
+            {
+                threats.Sort((x, y) => y.weight.CompareTo(x.weight));
+                threats.RemoveRange(Options.MaxRouteThreats, threats.Count - Options.MaxRouteThreats);
+            }
+            var g = Map.Grid;
+            var known = new Dictionary<int, float>();
+            return n =>
+            {
+                if (known.TryGetValue(n, out float v)) return v;
+                var p = g.Position(n);
+                var eye = p + new Vector3(0f, 0.65f, 0f);
+                v = 0f;
+                foreach (var (te, w) in threats)
+                {
+                    float d = SimSpace.FlatDistance(te, p);
+                    if (d < Options.ExposureRange && g.LineOfSight(te, eye)) v += w * (1f - d / Options.ExposureRange);
+                }
+                v *= care;
+                known[n] = v;
+                return v;
+            };
+        }
+
         // ------------------------------------------------------------------ combat
 
         void Engage(SimAgent a)
@@ -1201,9 +1407,14 @@ namespace ValorantReplay.Sim
                     var to = agents[best].Position - a.Position;
                     float angle = Math.Abs(DeltaYaw(a.Yaw, SimSpace.YawOf(to)));
                     bool preAimed = !a.Moving && a.Action == AgentAction.Hold && angle <= Options.PreAimAngle;
-                    float reaction = a.Profile.ReactionTime * (0.85f + 0.3f * (float)aimRng[a.Index].NextDouble());   // no two reactions are alike
+                    // no two reactions are alike (lognormal, mean ReactionTime); finding someone who only shot at you takes longer
+                    float sigma = Options.ReactionSpread;
+                    float reaction = a.Profile.ReactionTime * (float)Math.Exp(sigma * Gaussian(aimRng[a.Index]) - sigma * sigma / 2f);
+                    if (onlyShotAt[a.Index, best]) reaction += Options.LocateDelay;
                     a.FireReadyAt = Time + (preAimed ? reaction * Options.PreAimReaction : reaction + angle / a.Profile.TurnSpeed)
                         + (a.Moving ? 0.08f : 0f);
+                    a.EngageAngle = angle;
+                    a.FlickSign = DeltaYaw(a.Yaw, SimSpace.YawOf(to)) >= 0f ? 1f : -1f;
                 }
                 a.Target = best;
             }
@@ -1231,13 +1442,39 @@ namespace ValorantReplay.Sim
             bool counts = a.Weapon != WeaponStats.Shotgun;
             if (counts) a.Shooting.Bullets++;
             float d = Vector3.Distance(a.Eye, t.Eye);
-            float p = a.Profile.BaseAccuracy * a.Weapon.Accuracy / (1f + Math.Max(0f, d - 10f) / 25f);
+            float p = a.Profile.BaseAccuracy * a.Weapon.Accuracy * (float)Math.Pow(10.0 / Math.Max(Options.AccuracyNear, d), Options.AccuracyFalloff);
             if (a.Moving) p *= 0.25f;
             if (t.Moving && !t.Walking) p *= 0.85f;
             if (t.Crouching) p *= 0.9f;
             p = Math.Max(0.02f, Math.Min(0.95f, p));
+            // within a spray the previous bullet decides: on target (it hit) or not. The after-miss and after-hit chances
+            // keep the ratio AimStreaks and average p over a long spray; the first bullet of a spray has p.
+            bool spray = a.SprayTarget == t.Index && Time - a.PrevShot <= Options.SprayGap;
+            if (a.EngageAngle >= 0f)
+            {
+                // the first bullet at this enemy lands where the flick left the crosshair: short of the target or past it
+                if (!spray)
+                {
+                    var flick = aimRng[a.Index];
+                    float mean = Math.Min(Options.MissMax, Options.MissBase + Options.MissPerDegree * a.EngageAngle);
+                    float miss = Math.Abs(Gaussian(flick)) * mean * 1.2533f;   // half-normal with that mean
+                    p = Math.Max(0.02f, Math.Min(0.95f, p * Math.Max(0.3f, 1f + Options.MissHitSlope * (Options.MissMean - miss))));
+                    bool past = a.EngageAngle > 5f && flick.NextDouble() < Options.Overswing;
+                    a.Yaw += (past ? 1f : -1f) * a.FlickSign * miss;
+                }
+                a.EngageAngle = -1f;
+            }
+            if (spray && Options.AimStreaks != 1f)
+            {
+                float afterMiss = p / (1f + p * (Options.AimStreaks - 1f));
+                p = a.SprayHit ? Math.Min(0.97f, afterMiss * Options.AimStreaks) : afterMiss;
+            }
+            a.PrevShot = Time;
+            a.SprayTarget = t.Index;
+            a.SprayHit = false;
             var aim = aimRng[a.Index];
             if (aim.NextDouble() >= p) return;
+            a.SprayHit = true;
             double region = aim.NextDouble();
             bool head = region < a.Profile.HeadshotShare, legs = !head && region < a.Profile.HeadshotShare + a.Profile.LegShare;
             float raw = head ? a.Weapon.Head : legs ? a.Weapon.Legs : a.Weapon.Body;
@@ -1290,7 +1527,7 @@ namespace ValorantReplay.Sim
             {
                 killer.Kills++;
                 // the dying player's last callout: where the killer is
-                boards[v.Team].Callout(new Sighting { Enemy = killer.Index, Position = killer.Position, Time = Time, Certainty = 1f, Cue = Cue.Seen }, v.Profile, Time, commsRng[v.Index]);
+                boards[v.Team].Callout(new Sighting { Enemy = killer.Index, Position = killer.Position, Time = Time, Certainty = 1f, Cue = Cue.Seen }, v.Index, v.Profile, Time, commsRng[v.Index]);
             }
             lastDeath[v.Team] = new Death { Time = Time, Position = v.Position, Killer = killer?.Index ?? -1 };
             for (int j = 0; j < agents.Count; j++) { sees[v.Index, j] = false; sees[j, v.Index] = false; }

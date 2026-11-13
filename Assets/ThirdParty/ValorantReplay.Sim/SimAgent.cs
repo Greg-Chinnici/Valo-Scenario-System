@@ -81,6 +81,15 @@ namespace ValorantReplay.Sim
         internal int Target = -1;           // enemy being engaged
         internal float FireReadyAt, NextShotAt, TargetLastSeen;
         internal float LastShot = -100f;
+        internal float PrevShot = -100f;    // last aimed shot (Fire), for aim streaks
+        internal int SprayTarget = -1;      // who that shot was at, and whether it hit
+        internal bool SprayHit;
+        internal float EngageAngle = -1f;   // degrees turned onto the enemy just engaged, until its first bullet
+        internal float FlickSign = 1f;      // which way that turn went
+        internal float NextGlance, GlanceUntil = -1f, GlanceOffset, GlanceApplied, YawWithGlance;
+        internal float Urgency;             // at the last decision (Situation.Urgency)
+        internal string HoldSite;           // the site HoldSpot was drawn for (Map.Holds)
+        internal Vector3 HoldSpot;
         internal float TaskProgress;        // plant/defuse seconds
         internal float HoldYaw;             // where to look while holding
         internal float LookQuantile = 0.5f; // which of the angles players check here (LookModel), drawn per decision

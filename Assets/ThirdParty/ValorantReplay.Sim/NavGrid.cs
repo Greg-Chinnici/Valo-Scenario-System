@@ -193,7 +193,45 @@ namespace ValorantReplay.Sim
         }
 
         /// <summary>A* from start to goal (node indices). Fills path with the nodes after start, ending at goal.</summary>
-        public bool FindPath(int start, int goal, List<int> path) => finders.Value.Find(start, goal, path);
+        public bool FindPath(int start, int goal, List<int> path) => finders.Value.Find(start, goal, path, null);
+
+        /// <summary>Per node, metres to the nearest spot without floor at its height (a wall or a drop), in CellSize steps
+        /// up to 4 m; computed once.</summary>
+        public float[] Clearance
+        {
+            get
+            {
+                var c = clearance;
+                if (c != null) return c;
+                lock (clearanceLock)
+                {
+                    if (clearance != null) return clearance;
+                    c = new float[nodes.Length];
+                    int rings = (int)Math.Ceiling(4f / CellSize);
+                    for (int i = 0; i < nodes.Length; i++)
+                    {
+                        var p = Position(i);
+                        c[i] = rings * CellSize;
+                        for (int r = 1; r <= rings && c[i] >= rings * CellSize; r++)
+                            for (int d = 0; d < 8; d++)
+                            {
+                                double ang = d * Math.PI / 4;
+                                float x = p.X + (float)Math.Cos(ang) * r * CellSize, z = p.Z + (float)Math.Sin(ang) * r * CellSize;
+                                bool floor = false;
+                                foreach (int m in NodesAt(x, z)) if (Math.Abs(nodes[m].Y - p.Y) < 1f) { floor = true; break; }
+                                if (!floor) { c[i] = r * CellSize; break; }
+                            }
+                    }
+                    return clearance = c;
+                }
+            }
+        }
+        float[] clearance;
+        readonly object clearanceLock = new object();
+
+        /// <summary>A* where entering node m costs its distance times (1 + extraCost(m)); extraCost >= 0 (e.g. exposure to
+        /// believed enemies), so the straight-line heuristic stays admissible.</summary>
+        public bool FindPath(int start, int goal, List<int> path, Func<int, float> extraCost) => finders.Value.Find(start, goal, path, extraCost);
 
         /// <summary>Walking distance between two nodes, or +inf if there is no path.</summary>
         public float PathLength(int start, int goal)
@@ -225,7 +263,7 @@ namespace ValorantReplay.Sim
                 closed = new bool[grid.Count];
             }
 
-            public bool Find(int start, int goal, List<int> path)
+            public bool Find(int start, int goal, List<int> path, Func<int, float> extraCost)
             {
                 path.Clear();
                 if (start < 0 || goal < 0) return false;
@@ -249,7 +287,7 @@ namespace ValorantReplay.Sim
                     var pn = g.Position(n);
                     foreach (int m in g.Links(n))
                     {
-                        float c = cost[n] + Vector3.Distance(pn, g.Position(m));
+                        float c = cost[n] + Vector3.Distance(pn, g.Position(m)) * (extraCost == null ? 1f : 1f + extraCost(m));
                         if (seen[m] == stamp && (closed[m] || c >= cost[m])) continue;
                         Visit(m, n, c);
                         open.Push(c + Vector3.Distance(g.Position(m), target), m);

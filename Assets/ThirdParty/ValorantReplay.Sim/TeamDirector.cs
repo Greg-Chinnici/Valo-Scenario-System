@@ -184,6 +184,8 @@ namespace ValorantReplay.Sim
                 radius = 4f;
                 return Along(sim, push, mine.Name, mine.Center, map.AttackerSpawn, 0.35f);
             }
+            // where real defenders hold this site (Map.Holds), else anywhere on it
+            if (sim.HoldSpotFor(a, out var spot)) { radius = 2.5f; return spot; }
             radius = mine.Radius;
             return mine.Center;
         }

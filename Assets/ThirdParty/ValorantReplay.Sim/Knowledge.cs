@@ -10,6 +10,9 @@ namespace ValorantReplay.Sim
 {
     public enum Cue : byte { Seen = 0, Heard = 1, Callout = 2 }
 
+    /// <summary>How RoundSim.BeliefSource combines with the agents' own knowledge (see RoundSim.BeliefSourceMode).</summary>
+    public enum BeliefSourceMode : byte { Replace = 0, Supplement = 1 }
+
     /// <summary>What a team believes about an enemy, kept outside the simulation (RoundSim.BeliefSource). When set,
     /// every decision reads it instead of the agents' own Beliefs and the callout board: the utility brain's threats,
     /// the director's stack and rotation checks, trade targets. Perception (who sees whom, and so who can shoot whom)
@@ -27,6 +30,7 @@ namespace ValorantReplay.Sim
         public float Time;
         public float Certainty;     // at Time; decays with the reader's memory half-life
         public Cue Cue;
+        public int Caller;          // Cue Callout: who made it (-1 = an outside source)
 
         public float CertaintyAt(float now, float halfLife) =>
             Certainty * (float)Math.Pow(0.5, Math.Max(0f, now - Time) / Math.Max(0.01f, halfLife));
@@ -81,14 +85,18 @@ namespace ValorantReplay.Sim
             Board = new Beliefs(players);
         }
 
-        /// <summary>A teammate calls out a sighting. Depending on the caller's cohesion it reaches the board after a delay
-        /// or never; it arrives as a Callout at 90% of the caller's certainty, still stamped with when it was seen.</summary>
-        public void Callout(Sighting s, Profile caller, float now, Random rng)
+        /// <summary>A teammate calls out a sighting. Depending on the caller's cohesion and sense it reaches the board after
+        /// a delay or never, off by up to the caller's CalloutError, as a Callout with CalloutCertainty of the caller's
+        /// certainty, still stamped with when it was seen.</summary>
+        public void Callout(Sighting s, int callerIndex, Profile caller, float now, Random rng)
         {
             if (rng.NextDouble() < caller.CalloutDropChance) { Dropped++; return; }
             Made++;
             s.Cue = Cue.Callout;
-            s.Certainty *= 0.9f;
+            s.Caller = callerIndex;
+            s.Certainty *= caller.CalloutCertainty;
+            float err = caller.CalloutError;
+            s.Position += new Vector3((float)(rng.NextDouble() * 2 - 1) * err, 0f, (float)(rng.NextDouble() * 2 - 1) * err);
             pending.Add(new Pending { S = s, Deliver = now + caller.CalloutDelay });
         }
 
