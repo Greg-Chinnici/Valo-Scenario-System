@@ -13,6 +13,9 @@
 //   vrpsim tune <a.vrp> [more.vrp ...] [-n 40] [--iterations 3] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0]
 //       measure the population's shooting and find the constants that turn it into simulation parameters
 //       (ProfileTuner.cs); prints them ready to paste into ProfileFitter.
+//   vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]
+//       example bots (Bots.cs: skill tiers x archetypes, five-player lineups) playing each other from every recorded
+//       round's barrier drop, each round with both lineups attacking (BotMatch.cs). -n: runs per round and side.
 //   vrpsim validate <folder|a.vrp> [...]
 //       checks replays meant for publishing: each loads with this .vrp layout, is anonymized (pseudonymous ids, generated
 //       or no names, no crosshair names, no recording time, no user tags), is named <Map>-<match id>.vrp, and plays a
@@ -38,6 +41,7 @@ static class Program
                 "calibrate" => CalibrateCmd(args.Skip(1).ToList()),
                 "tune" => TuneCmd(args.Skip(1).ToList()),
                 "validate" => ValidateCmd(args.Skip(1).ToList()),
+                "bots" => BotsCmd(args.Skip(1).ToList()),
                 _ => Usage(),
             };
         }
@@ -56,6 +60,7 @@ static class Program
         Console.Error.WriteLine("vrpsim calibrate <a.vrp> [more.vrp ...] [-n 100] [--at 0,20,40] [--profiles loo|fitted|default] [--knobs] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0] [--csv out.csv] [--players]");
         Console.Error.WriteLine("vrpsim tune <a.vrp> [more.vrp ...] [-n 40] [--iterations 3] [--learned holdout|all|none] [--perception default|valoreplay] [--seed 0] [--threads 0]");
         Console.Error.WriteLine("vrpsim validate <folder|a.vrp> [...]");
+        Console.Error.WriteLine("vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]");
         return 2;
     }
 
@@ -260,6 +265,132 @@ static class Program
             Console.WriteLine($"{f.Player,2} {Trunc(f.Name, 20),-20} {f.Profile,-44} | {t.Kills / (float)n,7:0.00} {t.Deaths / (float)n,7:0.00} {t.OpeningRate,5:P0}");
         }
         return 0;
+    }
+
+    // ---------------------------------------------------------------- bots
+
+    static int BotsCmd(List<string> a)
+    {
+        int n = int.Parse(Take(a, "-n") ?? "2", CultureInfo.InvariantCulture);
+        int seed = int.Parse(Take(a, "--seed") ?? "0", CultureInfo.InvariantCulture);
+        int threads = int.Parse(Take(a, "--threads") ?? "0", CultureInfo.InvariantCulture);
+        var only = (Take(a, "--only") ?? "roster,ladder,styles,brains").Split(',').ToHashSet();
+        var files = a.SelectMany<string, string>(p => Directory.Exists(p) ? Directory.GetFiles(p, "*.vrp").OrderBy(f => f, StringComparer.Ordinal) : new[] { p }).ToList();
+        if (files.Count == 0) throw new ArgumentException("at least one .vrp expected");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var arena = new BotArena(files.Select(VrpReplay.Load));
+        Console.WriteLine($"{files.Count} replays, {arena.Maps.Count} maps, {arena.Rounds} rounds from the barrier drop x 2 sides x {n} runs = " +
+            $"{arena.Rounds * 2 * n:N0} simulated rounds per matchup (recorded positions and guns, every agent AI)");
+        BotMatchResult Play(BotLineup x, BotLineup y) => arena.Play(x, y, n, seed, threads);
+
+        if (only.Contains("roster"))
+        {
+            Console.WriteLine();
+            Console.WriteLine("tiers         real-game stats the tier is set from              | simulation parameters");
+            Console.WriteLine($"  {"tier",-8} {"acc",5} {"hs/hit",6} {"legs",5} {"react",5} {"aim err",7} | {"sense",5} {"acc",5} {"hs",4} {"react",5} {"look",5} {"turn",4} {"memory",6} {"hear",4}");
+            foreach (var t in Bots.Tiers)
+            {
+                var s = Bots.Stats(t);
+                var p = Bots.Make(t, BotArchetype.Flex);
+                Console.WriteLine($"  {t,-8} {s.Accuracy,5:P0} {s.HeadHits,6:P0} {s.LegHits,5:P0} {s.Reaction,5:0.00} {s.AimError,6:0.0}° | " +
+                    $"{p.Skill,5:0.00} {p.BaseAccuracy,5:0.00} {p.HeadshotShare,4:0.00} {p.ReactionTime,5:0.00} {p.LookSpread,5:0.0} {p.TurnSpeed,4:0} {p.MemoryHalfLife,5:0.0}s {p.HearingError,3:0}m");
+            }
+            Console.WriteLine("  (Average = the replays' population; sense = Profile.Skill: memory, hearing, decision rate, reads, flick speed)");
+            Console.WriteLine();
+            Console.WriteLine($"archetypes  {"style",-8} {"aggr",4} {"coh",4}");
+            foreach (var x in BotArchetype.All)
+                Console.WriteLine($"  {x.Name,-9} {x.Style,-8} {x.Aggression,4:0.00} {x.Cohesion,4:0.00}  {x.Description}");
+            Console.WriteLine();
+            Console.WriteLine("lineups");
+            foreach (var l in Bots.StyleLineups())
+                Console.WriteLine($"  {l.Name,-10} {string.Join(", ", l.Bots.Select(b => $"{b.Name} {b.Profile.Cohesion:0.00}"))}   (archetype, cohesion)");
+        }
+
+        if (only.Contains("ladder"))
+        {
+            Console.WriteLine();
+            Console.WriteLine("ladder: each tier's Standard lineup against Average's");
+            BotHeader("tier");
+            var average = Bots.Lineup("Average", BotTier.Average, Bots.Standard);
+            foreach (var t in Bots.Tiers)
+                BotRow(t.ToString(), Play(Bots.Lineup(t.ToString(), t, Bots.Standard), average));
+        }
+
+        if (only.Contains("brains"))
+        {
+            Console.WriteLine();
+            Console.WriteLine("aim vs game sense: Standard lineups mixing one tier's aim with another's sense");
+            var average = Bots.Lineup("Average", BotTier.Average, Bots.Standard);
+            var aim = Bots.Lineup("Elite aim, Novice sense", BotTier.Elite, BotTier.Novice, Bots.Standard);
+            var sense = Bots.Lineup("Novice aim, Elite sense", BotTier.Novice, BotTier.Elite, Bots.Standard);
+            var aimOnly = Bots.Lineup("Elite aim, Average sense", BotTier.Elite, BotTier.Average, Bots.Standard);
+            var senseOnly = Bots.Lineup("Average aim, Elite sense", BotTier.Average, BotTier.Elite, Bots.Standard);
+            BotHeader("lineup (vs)", 37);
+            BotRow($"{aimOnly.Name} (Average)", Play(aimOnly, average), 37);
+            BotRow($"{senseOnly.Name} (Average)", Play(senseOnly, average), 37);
+            BotRow($"{aim.Name} (Average)", Play(aim, average), 37);
+            BotRow($"{sense.Name} (Average)", Play(sense, average), 37);
+            BotRow($"{aim.Name} (the other)", Play(aim, sense), 37);
+            BotRow("Average aim, Pro sense (Novice sense)", Play(Bots.Lineup("", BotTier.Average, BotTier.Pro, Bots.Standard),
+                Bots.Lineup("", BotTier.Average, BotTier.Novice, Bots.Standard)), 37);
+        }
+
+        if (only.Contains("styles"))
+        {
+            Console.WriteLine();
+            var lineups = Bots.StyleLineups();
+            var win = new float[lineups.Count, lineups.Count];
+            var byArchetype = new Dictionary<string, PlayerTally>();
+            var total = new BotMatchResult[lineups.Count];
+            void Collect(BotLineup l, PlayerTally[] tallies)
+            {
+                for (int i = 0; i < l.Bots.Length; i++)
+                {
+                    if (!byArchetype.TryGetValue(l.Bots[i].Name, out var t)) byArchetype[l.Bots[i].Name] = t = new PlayerTally();
+                    t.Add(tallies[i]);
+                }
+            }
+            for (int i = 0; i < lineups.Count; i++)
+                for (int j = i + 1; j < lineups.Count; j++)
+                {
+                    var m = Play(lineups[i], lineups[j]);
+                    win[i, j] = m.WinRateA;
+                    win[j, i] = 1f - m.WinRateA;
+                    Collect(lineups[i], m.TallyA);
+                    Collect(lineups[j], m.TallyB);
+                }
+            Console.WriteLine("styles at Average skill: row lineup's round win rate against the column's (both sides)");
+            Console.WriteLine($"  {"",-10} " + string.Join(" ", lineups.Select(l => $"{l.Name,9}")) + "    mean");
+            for (int i = 0; i < lineups.Count; i++)
+            {
+                float mean = Enumerable.Range(0, lineups.Count).Where(j => j != i).Average(j => win[i, j]);
+                Console.WriteLine($"  {lineups[i].Name,-10} " + string.Join(" ", Enumerable.Range(0, lineups.Count).Select(j => i == j ? $"{"-",9}" : $"{win[i, j],9:P0}")) + $"  {mean,6:P0}");
+            }
+            Console.WriteLine();
+            Console.WriteLine("archetypes across the style matches (all Average skill)");
+            Console.WriteLine($"  {"archetype",-10} {"rounds",6} {"K/r",5} {"D/r",5} {"K/D",5} {"open",5} {"1st K",5} {"1st D",5} {"trades",6} {"traded",6} {"acc",5} {"hs/hit",6}");
+            foreach (var kv in byArchetype.OrderByDescending(kv => kv.Value.OpeningRate))
+            {
+                var t = kv.Value;
+                Console.WriteLine($"  {kv.Key,-10} {t.Rounds,6} {t.Kills / (float)t.Rounds,5:0.00} {t.Deaths / (float)t.Rounds,5:0.00} {t.Kills / (float)Math.Max(1, t.Deaths),5:0.00} " +
+                    $"{t.OpeningRate,5:P0} {t.FirstKillRate,5:P0} {t.FirstDeathRate,5:P0} {t.TradeRate,6:P0} {t.TradedRate,6:P0} {t.Accuracy,5:P0} {t.HeadHitRate,6:P0}");
+            }
+            Console.WriteLine("  (open: in the round's first duel; trades: kills that avenged a teammate; traded: deaths that were avenged)");
+        }
+        Console.WriteLine();
+        Console.WriteLine($"{clock.Elapsed.TotalSeconds:0} s");
+        return 0;
+    }
+
+    static void BotHeader(string label, int width = 10) =>
+        Console.WriteLine($"  {label.PadRight(width)} {"win",5} {"+-",4} {"atk",5} {"def",5} {"plant",5} {"len",5} | {"K/r",5} {"D/r",5} {"K/D",5} {"1st K",5} {"traded",6} {"acc",5} {"hs/hit",6} {"react",5}");
+
+    static void BotRow(string label, BotMatchResult m, int width = 10)
+    {
+        var t = m.TotalA;
+        float rounds = m.Rounds;
+        Console.WriteLine($"  {label.PadRight(width)} {m.WinRateA,5:P0} {m.HalfWidth,4:P0} {m.AttackWinRateA,5:P0} {m.DefenseWinRateA,5:P0} {m.Planted / rounds,5:P0} {m.MeanDuration,4:0}s | " +
+            $"{t.Kills / rounds,5:0.00} {t.Deaths / rounds,5:0.00} {t.Kills / (float)Math.Max(1, t.Deaths),5:0.00} {t.FirstKills / rounds,5:P0} {t.TradedRate,6:P0} {t.Accuracy,5:P0} {t.HeadHitRate,6:P0} {t.ReactionMean,5:0.00}");
     }
 
     // ---------------------------------------------------------------- calibrate
