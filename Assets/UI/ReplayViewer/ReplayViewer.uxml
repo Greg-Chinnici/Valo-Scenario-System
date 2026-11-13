@@ -5,9 +5,22 @@
         <ui:VisualElement name="name-tags" class="rv-name-tags" picking-mode="Ignore" />
 
         <ui:VisualElement class="rv-top" picking-mode="Ignore">
-            <ui:VisualElement class="rv-top-side" picking-mode="Ignore">
-                <ui:Button name="back-button" text="BACK" class="rv-button" />
-                <ui:Label name="map-label" class="rv-map" picking-mode="Ignore" />
+            <ui:VisualElement class="rv-top-side rv-top-side--left" picking-mode="Ignore">
+                <ui:VisualElement class="rv-title-row" picking-mode="Ignore">
+                    <ui:Button name="back-button" text="LIBRARY" class="rv-button" />
+                    <ui:Label name="map-label" class="rv-map" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rv-modes">
+                    <ui:Button name="mode-watch" text="WATCH" class="rv-mode" tooltip="Watch the recording. Click a player to follow them." />
+                    <ui:Button name="mode-intel" text="INTEL" class="rv-mode" tooltip="What one team knows: last seen positions, sounds, utility (B)." />
+                    <ui:Button name="mode-command" text="COMMAND" class="rv-mode" tooltip="The AI plays the round from here and takes your orders (C)." />
+                    <ui:Button name="mode-play" text="PLAY AS..." class="rv-mode" tooltip="Take over a player from this moment in first person (Enter on the followed player)." />
+                </ui:VisualElement>
+                <ui:VisualElement name="mode-options" class="rv-mode-options">
+                    <ui:Button name="kb-team-button" text="INTEL OFF" class="rv-button rv-button--small rv-kb-button" />
+                    <ui:Button name="kb-truth-button" text="HIDE ENEMIES" class="rv-button rv-button--small rv-kb-button" />
+                </ui:VisualElement>
+                <ui:Label name="mode-hint" class="rv-mode-hint" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement class="rv-scoreboard">
                 <ui:Label name="team0-role" class="rv-role rv-team0-text" />
@@ -50,10 +63,16 @@
                 <ui:Button name="next-round" text="NEXT" class="rv-button rv-button--small" />
                 <ui:Label name="time-label" text="0:00 / 0:00" class="rv-time" />
                 <ui:VisualElement name="speed-group" class="rv-speeds" />
-                <ui:Button name="kb-team-button" text="INTEL OFF" class="rv-button rv-button--small rv-kb-button" />
-                <ui:Button name="kb-truth-button" text="HIDE ENEMIES" class="rv-button rv-button--small rv-kb-button" />
                 <ui:Label name="follow-label" class="rv-follow rv-grow" />
-                <ui:Label text="Space play · ←/→ 5s · PgUp/PgDn round · RMB orbit · LMB pan / click player · Wheel zoom · Esc free cam · Enter play as followed · M 3D map · B team intel · H hide enemies" class="rv-hint" />
+                <ui:VisualElement class="rv-tools">
+                    <ui:Button name="tool-map" text="3D MAP" class="rv-tool" tooltip="3D map or minimap (M)" />
+                    <ui:Button name="tool-tags" text="NAMES" class="rv-tool" tooltip="Name tags over players (N)" />
+                    <ui:Button name="tool-aim" text="AIM" class="rv-tool" tooltip="Where each player is looking" />
+                    <ui:Button name="tool-shots" text="SHOTS" class="rv-tool" tooltip="Shot tracers" />
+                    <ui:Button name="tool-board" text="SCOREBOARD" class="rv-tool" tooltip="Keep the scoreboard open (hold Tab for a look)" />
+                    <ui:Button name="tool-view" text="OVERVIEW" class="rv-tool" tooltip="Stop following and look at the whole map (Esc)" />
+                    <ui:Button name="tool-help" text="?" class="rv-tool rv-tool--help" tooltip="Shortcuts (F1)" />
+                </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="timeline" class="rv-timeline">
                 <ui:VisualElement class="rv-timeline-track" picking-mode="Ignore">
@@ -65,5 +84,39 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="scoreboard" class="rv-scoreboard-overlay" picking-mode="Ignore" />
+
+        <ui:VisualElement name="help-panel" class="rv-help">
+            <ui:VisualElement class="rv-help-head">
+                <ui:Label text="SHORTCUTS" class="rv-help-title" />
+                <ui:Button name="help-close" text="CLOSE" class="rv-button rv-button--small" />
+            </ui:VisualElement>
+            <ui:VisualElement class="rv-help-columns">
+                <ui:VisualElement class="rv-help-col">
+                    <ui:Label text="PLAYBACK" class="rv-help-group" />
+                    <ui:Label text="Space   play / pause" class="rv-help-line" />
+                    <ui:Label text="Left / Right   5 s back / forward (Shift: 1 s)" class="rv-help-line" />
+                    <ui:Label text="PgUp / PgDn   previous / next round" class="rv-help-line" />
+                    <ui:Label text="- / +   slower / faster" class="rv-help-line" />
+                    <ui:Label text="Tab (hold)   scoreboard" class="rv-help-line" />
+                    <ui:Label text="CAMERA" class="rv-help-group" />
+                    <ui:Label text="Right-drag   orbit   ·   left-drag   pan   ·   wheel   zoom" class="rv-help-line" />
+                    <ui:Label text="WASD   move   ·   Q / E   rotate" class="rv-help-line" />
+                    <ui:Label text="Click a player   follow   ·   Esc   stop following" class="rv-help-line" />
+                    <ui:Label text="M   3D map / minimap   ·   N   name tags" class="rv-help-line" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rv-help-col">
+                    <ui:Label text="MODES" class="rv-help-group" />
+                    <ui:Label text="B   intel: cycle team (off, red, teal)" class="rv-help-line" />
+                    <ui:Label text="H   hide what that team cannot know" class="rv-help-line" />
+                    <ui:Label text="C   command mode on / off" class="rv-help-line" />
+                    <ui:Label text="Enter   play as the followed player" class="rv-help-line" />
+                    <ui:Label text="COMMAND MODE" class="rv-help-group" />
+                    <ui:Label text="Left-click   select (Shift adds)   ·   Esc   clear" class="rv-help-line" />
+                    <ui:Label text="Right-click the floor   move there" class="rv-help-line" />
+                    <ui:Label text="F   plant / defuse / pick up the spike" class="rv-help-line" />
+                    <ui:Label text="G   hold, facing the cursor   ·   X   back to the AI" class="rv-help-line" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

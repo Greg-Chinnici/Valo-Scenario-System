@@ -9,6 +9,8 @@
     --vr-accent-hover: #FF5E6B;
     --vr-good: #3EDBB0;
     --vr-warn: #F5C451;
+    --vr-team0: #F5545C;
+    --vr-team1: #3DC7B8;
 }
 
 .vr-root {
@@ -24,7 +26,7 @@
 .vr-muted { color: var(--vr-muted); }
 
 /* ---------------------------------------------------------------- header */
-.vr-header { flex-direction: row; align-items: flex-end; margin-bottom: 16px; flex-shrink: 0; }
+.vr-header { flex-direction: row; align-items: center; margin-bottom: 16px; flex-shrink: 0; }
 .vr-brand {
     font-size: 26px;
     -unity-font-style: bold;
@@ -125,28 +127,43 @@
 .vr-root .vr-file-list .unity-collection-view__item--selected .vr-file-name { color: var(--vr-accent); }
 .vr-empty { color: var(--vr-muted); padding: 10px; white-space: normal; }
 
-/* ---------------------------------------------------------------- progress */
-.vr-progress-card { margin-bottom: 16px; flex-shrink: 0; }
-.vr-progress-head { margin-bottom: 6px; }
-.vr-phase { font-size: 16px; -unity-font-style: bold; padding: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vr-percent { font-size: 16px; color: var(--vr-accent); -unity-font-style: bold; padding: 0; margin: 0; min-width: 56px; -unity-text-align: middle-right; }
-.vr-progress { margin: 0 0 12px 0; min-height: 10px; }
-.vr-root .vr-progress .unity-progress-bar__background {
-    background-color: var(--vr-bg);
+/* ---------------------------------------------------------------- folder (header) */
+.vr-folder { flex-direction: row; align-items: center; width: 46%; max-width: 640px; flex-shrink: 1; }
+.vr-folder-caption { color: var(--vr-muted); font-size: 10px; letter-spacing: 1.5px; -unity-font-style: bold; padding: 0; margin: 0 8px 0 0; }
+.vr-folder-field { flex-grow: 1; flex-shrink: 1; margin: 0; min-width: 0; }
+.vr-root .vr-folder-field .unity-base-text-field__input { font-size: 11px; }
+
+/* ---------------------------------------------------------------- library list */
+.vr-list-head { margin-bottom: 8px; flex-shrink: 0; }
+.vr-list-head .vr-section-title { margin: 0; }
+.vr-map-filter { margin: 0; width: 150px; flex-shrink: 0; }
+.vr-root .vr-map-filter .unity-base-popup-field__input,
+.vr-root .vr-map-filter .unity-base-field__input {
+    background-color: var(--vr-card-2);
     border-color: var(--vr-border);
-    border-radius: 5px;
-    height: 10px;
-    min-height: 10px;
+    color: var(--vr-text);
+    border-radius: 4px;
 }
-.vr-root .vr-progress .unity-progress-bar__progress { background-color: var(--vr-accent); border-radius: 5px; }
-.vr-root .vr-progress .unity-progress-bar__title-container { display: none; }
-.vr-root .vr-progress--done .unity-progress-bar__progress { background-color: var(--vr-good); }
-.vr-root .vr-progress--failed .unity-progress-bar__progress { background-color: var(--vr-warn); }
+.vr-replay { flex-grow: 1; padding: 6px 12px; justify-content: center; border-left-width: 3px; border-color: rgba(0, 0, 0, 0); }
+.vr-replay-top { flex-direction: row; align-items: center; }
+.vr-replay-map { font-size: 15px; -unity-font-style: bold; padding: 0; margin: 0; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-replay-score { font-size: 14px; -unity-font-style: bold; padding: 0; margin: 0 0 0 8px; }
+.vr-replay-meta { font-size: 11px; color: var(--vr-muted); padding: 0; margin: 2px 0 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-root .vr-file-list .unity-collection-view__item--selected .vr-replay { border-color: var(--vr-accent); }
+.vr-root .vr-file-list .unity-collection-view__item--selected .vr-replay-map { color: var(--vr-accent); }
+
+/* ---------------------------------------------------------------- match details */
+.vr-details { flex-direction: column; }
+.vr-match-card { flex-shrink: 0; margin-bottom: 16px; }
+.vr-match-head { margin-bottom: 12px; align-items: flex-start; }
+.vr-match-title { font-size: 28px; -unity-font-style: bold; letter-spacing: 1px; padding: 0; margin: 0; }
+.vr-match-sub { color: var(--vr-muted); font-size: 11px; padding: 0; margin: 2px 0 0 0; }
+.vr-root .vr-match-head .vr-watch { padding: 12px 26px; margin: 2px 0 0 12px; font-size: 14px; }
 
 .vr-stats { flex-direction: row; flex-wrap: wrap; }
 .vr-stat {
-    width: 20%;
-    min-width: 110px;
+    width: 18%;
+    min-width: 100px;
     flex-grow: 1;
     flex-shrink: 0;
     overflow: hidden;
@@ -158,42 +175,45 @@
 .vr-stat-value { font-size: 17px; -unity-font-style: bold; padding: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vr-stat-label { font-size: 10px; color: var(--vr-muted); padding: 0; margin: 0; letter-spacing: 0.5px; }
 
-/* ---------------------------------------------------------------- log */
-.vr-log-card { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
-.vr-log-head { margin-bottom: 6px; flex-shrink: 0; }
-.vr-log-head .vr-section-title { margin: 0; }
-.vr-inline-toggle { margin: 0 6px; }
-.vr-root .vr-inline-toggle .unity-base-field__label { min-width: 0; margin-right: 4px; }
-.vr-log {
-    flex-grow: 1;
-    flex-shrink: 1;
-    flex-basis: 0;
-    min-height: 0;
-    background-color: var(--vr-bg);
-    border-width: 1px;
+.vr-round-strip { flex-direction: row; flex-wrap: wrap; min-height: 40px; }
+.vr-round {
+    width: 26px;
+    height: 34px;
+    margin: 0 3px 4px 0;
+    border-radius: 3px;
+    background-color: var(--vr-card-2);
+    align-items: center;
+    justify-content: center;
+    border-top-width: 3px;
     border-color: var(--vr-border);
-    border-radius: 4px;
-    padding: 4px 0;
 }
-.vr-log-line {
-    font-size: 12px;
-    padding: 1px 10px;
-    margin: 0;
-    white-space: normal;
-}
-.vr-log--info { color: var(--vr-text); }
-.vr-log--detail { color: var(--vr-muted); }
-.vr-log--progress { color: #6FA8DC; }
-.vr-log--note { color: #C9D3DA; }
-.vr-log--round { color: var(--vr-warn); -unity-font-style: bold; }
-.vr-log--kill { color: #F28B94; }
-.vr-log--success { color: var(--vr-good); -unity-font-style: bold; }
-.vr-log--warning { color: var(--vr-warn); }
-.vr-log--error { color: var(--vr-accent); -unity-font-style: bold; }
+.vr-round--team0 { border-color: var(--vr-team0); background-color: rgba(245, 84, 92, 0.16); }
+.vr-round--team1 { border-color: var(--vr-team1); background-color: rgba(61, 199, 184, 0.16); }
+.vr-round-number { font-size: 11px; -unity-font-style: bold; padding: 0; margin: 0; }
+.vr-round-reason { font-size: 9px; color: var(--vr-muted); padding: 0; margin: 0; }
+.vr-round-gap { width: 10px; }
+.vr-legend { color: var(--vr-muted); font-size: 10px; padding: 0; margin: 2px 0 0 0; }
+
+/* ---------------------------------------------------------------- teams */
+.vr-teams { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
+.vr-team { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; border-top-width: 3px; }
+.vr-team--0 { margin-right: 8px; border-top-color: var(--vr-team0); }
+.vr-team--1 { margin-left: 8px; border-top-color: var(--vr-team1); }
+.vr-team-head { flex-direction: row; align-items: center; margin-bottom: 8px; }
+.vr-team-name { font-size: 13px; -unity-font-style: bold; letter-spacing: 1px; padding: 0; margin: 0; flex-grow: 1; }
+.vr-team-score { font-size: 24px; -unity-font-style: bold; padding: 0; margin: 0; }
+.vr-team--0 .vr-team-name, .vr-team--0 .vr-team-score, .vr-team--0 .vr-player-agent { color: var(--vr-team0); }
+.vr-team--1 .vr-team-name, .vr-team--1 .vr-team-score, .vr-team--1 .vr-player-agent { color: var(--vr-team1); }
+.vr-player { flex-direction: row; align-items: center; padding: 5px 0; border-top-width: 1px; border-color: var(--vr-border); }
+.vr-player-head { color: var(--vr-muted); font-size: 10px; letter-spacing: 1px; }
+.vr-player > Label { padding: 0; margin: 0; }
+.vr-player-agent { width: 84px; -unity-font-style: bold; }
+.vr-player-name { flex-grow: 1; flex-shrink: 1; min-width: 0; color: var(--vr-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-player-kda { width: 72px; -unity-text-align: middle-right; }
+.vr-player-acs { width: 44px; -unity-text-align: middle-right; -unity-font-style: bold; }
 
 /* ---------------------------------------------------------------- footer */
 .vr-footer { flex-direction: row; align-items: center; margin-top: 10px; flex-shrink: 0; }
 .vr-status { color: var(--vr-muted); padding: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vr-status--error { color: var(--vr-accent); }
 .vr-status--success { color: var(--vr-good); }
-.vr-root .vr-watch { padding: 6px 16px; margin-left: 8px; }

@@ -27,6 +27,17 @@ namespace ValoReplay.Replay
         private VisualElement _root, _team0List, _team1List, _killFeed, _nameTags, _timeline, _timelineFill, _timelineHead, _timelineMarks, _speedGroup, _scoreboardOverlay;
         private Label _mapLabel, _team0Role, _team1Role, _team0Score, _team1Score, _roundLabel, _timerLabel, _phaseLabel, _timeLabel, _followLabel, _message;
         private Button _playButton;
+
+        // modes (top left) and tools (bottom right)
+        private enum Mode { Watch, Intel, Command }
+        private Button _modeWatch, _modeIntel, _modeCommand, _modePlay;
+        private Button _toolMap, _toolTags, _toolAim, _toolShots, _toolBoard, _toolView;
+        private VisualElement _modeOptions, _helpPanel;
+        private Label _modeHint;
+        private BlackboardView _intel;
+        private Play.RoundCommander _commander;
+        private ReplayCameraController _cameraController;
+        private bool _showTags = true, _boardPinned, _pickingPlayer;
         private readonly List<Button> _speedButtons = new List<Button>();
         private PlayerCard[] _rows = new PlayerCard[0];
         private ScoreboardView _scoreboard;
@@ -40,9 +51,13 @@ namespace ValoReplay.Replay
             if (viewer == null) viewer = FindFirstObjectByType<ReplayViewer>();
             if (worldCamera == null) worldCamera = Camera.main;
             // team knowledge (B); add the component to the HUD object yourself to keep tuned settings
-            if (GetComponent<BlackboardView>() == null) gameObject.AddComponent<BlackboardView>();
+            // (explicit null checks: in the editor a missing component is a placeholder object, not null, so ?? fails)
+            _intel = GetComponent<BlackboardView>();
+            if (_intel == null) _intel = gameObject.AddComponent<BlackboardView>();
             // command mode (C): the AI plays the round from here and takes orders
-            if (GetComponent<Play.RoundCommander>() == null) gameObject.AddComponent<Play.RoundCommander>();
+            _commander = GetComponent<Play.RoundCommander>();
+            if (_commander == null) _commander = gameObject.AddComponent<Play.RoundCommander>();
+            _cameraController = FindFirstObjectByType<ReplayCameraController>();
 
             _root = GetComponent<UIDocument>().rootVisualElement;
             _root.pickingMode = PickingMode.Ignore;
@@ -88,6 +103,8 @@ namespace ValoReplay.Replay
                 _speedGroup.Add(b);
                 _speedButtons.Add(b);
             }
+
+            SetupModesAndTools();
 
             _timeline.RegisterCallback<PointerDownEvent>(OnTimelineDown);
             _timeline.RegisterCallback<PointerMoveEvent>(OnTimelineMove);
@@ -160,6 +177,103 @@ namespace ValoReplay.Replay
             }
         }
 
+        // ------------------------------------------------------------------------------------------ modes and tools
+        private void SetupModesAndTools()
+        {
+            _modeWatch = _root.Q<Button>("mode-watch");
+            _modeIntel = _root.Q<Button>("mode-intel");
+            _modeCommand = _root.Q<Button>("mode-command");
+            _modePlay = _root.Q<Button>("mode-play");
+            _modeOptions = _root.Q("mode-options");
+            _modeHint = _root.Q<Label>("mode-hint");
+            _toolMap = _root.Q<Button>("tool-map");
+            _toolTags = _root.Q<Button>("tool-tags");
+            _toolAim = _root.Q<Button>("tool-aim");
+            _toolShots = _root.Q<Button>("tool-shots");
+            _toolBoard = _root.Q<Button>("tool-board");
+            _toolView = _root.Q<Button>("tool-view");
+            _helpPanel = _root.Q("help-panel");
+
+            _modeWatch.clicked += () => SetMode(Mode.Watch);
+            _modeIntel.clicked += () => SetMode(Mode.Intel);
+            _modeCommand.clicked += () => SetMode(Mode.Command);
+            _modePlay.clicked += PlayAsClicked;
+
+            _toolMap.clicked += () => { if (viewer.HasBuiltMap) viewer.ShowBuiltMap = !viewer.ShowBuiltMap; };
+            _toolTags.clicked += () => _showTags = !_showTags;
+            _toolAim.clicked += () => viewer.ShowAimLines = !viewer.ShowAimLines;
+            _toolShots.clicked += () => viewer.ShowShots = !viewer.ShowShots;
+            _toolBoard.clicked += () => _boardPinned = !_boardPinned;
+            _toolView.clicked += Overview;
+            _root.Q<Button>("tool-help").clicked += ToggleHelp;
+            _root.Q<Button>("help-close").clicked += ToggleHelp;
+        }
+
+        private Mode CurrentMode => _commander != null && _commander.Busy ? Mode.Command
+            : _intel != null && _intel.ViewTeam >= 0 ? Mode.Intel : Mode.Watch;
+
+        /// <summary>One mode at a time: leaving command mode returns to the recording, intel shows the followed player's
+        /// team (or red).</summary>
+        private void SetMode(Mode mode)
+        {
+            _pickingPlayer = false;
+            if (mode != Mode.Command && _commander != null && _commander.Busy) _commander.End("Back to the recording");
+            if (mode != Mode.Intel && _intel != null && _intel.ViewTeam >= 0) _intel.SetTeam(-1);
+            if (mode == Mode.Intel && _intel != null && _intel.ViewTeam < 0)
+            {
+                int fp = viewer.FollowPlayer;
+                _intel.SetTeam(fp >= 0 && fp < Replay.Players.Count ? Replay.Players[fp].Team : 0);
+            }
+            if (mode == Mode.Command && _commander != null && !_commander.Busy) _commander.Toggle();
+        }
+
+        /// <summary>Plays the followed player; otherwise asks for one (the PLAY button on a card, or click a player and
+        /// press the button again).</summary>
+        private void PlayAsClicked()
+        {
+            int fp = viewer.FollowPlayer;
+            if (fp >= 0 && Replay.Sample(fp, viewer.Time).Alive) { PlayAs(fp); return; }
+            _pickingPlayer = !_pickingPlayer;
+        }
+
+        private void Overview()
+        {
+            viewer.FollowPlayer = -1;
+            if (_cameraController != null) _cameraController.FrameReplay();
+        }
+
+        private void ToggleHelp() => _helpPanel.EnableInClassList("rv-help--open", !_helpPanel.ClassListContains("rv-help--open"));
+
+        private void UpdateModesAndTools()
+        {
+            var mode = CurrentMode;
+            bool briefing = _commander != null && _commander.Busy && !_commander.Active;
+            _modeWatch.EnableInClassList("rv-mode--active", mode == Mode.Watch && !_pickingPlayer);
+            _modeIntel.EnableInClassList("rv-mode--active", mode == Mode.Intel);
+            _modeCommand.EnableInClassList("rv-mode--active", mode == Mode.Command && !briefing);
+            _modeCommand.EnableInClassList("rv-mode--waiting", briefing);
+            _modePlay.EnableInClassList("rv-mode--active", _pickingPlayer);
+            Ui.Show(_modeOptions, mode == Mode.Intel);
+
+            int fp = viewer.FollowPlayer;
+            bool following = fp >= 0 && fp < Replay.Players.Count;
+            _modeHint.text = _pickingPlayer
+                ? (following ? $"Press PLAY AS again to take over {Replay.Players[fp].AgentName}, or PLAY on any player card."
+                             : "Pick who to play: press PLAY on a player card, or click a player in the world and press PLAY AS again.")
+                : mode == Mode.Command ? (briefing ? "Briefing the AI…" : "Left-click players to select · right-click the floor to move them · F objective · G hold · X back to the AI")
+                : mode == Mode.Intel ? "Ghost markers: where this team last saw or heard each enemy. HIDE ENEMIES shows only what they know."
+                : following ? $"Following {Replay.Players[fp].AgentName}. PLAY AS takes them over from here."
+                : "Click a player to follow them. ? lists every shortcut.";
+
+            _toolMap.SetEnabled(viewer.HasBuiltMap);
+            _toolMap.EnableInClassList("rv-tool--on", viewer.HasBuiltMap && viewer.ShowBuiltMap);
+            _toolTags.EnableInClassList("rv-tool--on", _showTags);
+            _toolAim.EnableInClassList("rv-tool--on", viewer.ShowAimLines);
+            _toolShots.EnableInClassList("rv-tool--on", viewer.ShowShots);
+            _toolBoard.EnableInClassList("rv-tool--on", _boardPinned);
+            _nameTags.style.display = _showTags ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
         private static Label MakeLabel(string text, string cls)
         {
             var l = new Label(text);
@@ -179,12 +293,13 @@ namespace ValoReplay.Replay
             if (Replay == null) return;
             HandleKeys();
             UpdateTopBar();
+            UpdateModesAndTools();
             foreach (var row in _rows) row.Update(viewer, viewer.Time);
-            bool tab = Keyboard.current != null && Keyboard.current.tabKey.isPressed;
+            bool board = _boardPinned || (Keyboard.current != null && Keyboard.current.tabKey.isPressed);
             if (_scoreboard != null)
             {
-                _scoreboard.Visible = tab;
-                if (tab) _scoreboard.Update(viewer, viewer.Time);
+                _scoreboard.Visible = board;
+                if (board) _scoreboard.Update(viewer, viewer.Time);
             }
             UpdateKillFeed();
             UpdateTransport();
@@ -226,6 +341,13 @@ namespace ValoReplay.Replay
             if (kb == null) return;
             if (kb.enterKey.wasPressedThisFrame && viewer.FollowPlayer >= 0) PlayAs(viewer.FollowPlayer);
             if (kb.mKey.wasPressedThisFrame && viewer.HasBuiltMap) viewer.ShowBuiltMap = !viewer.ShowBuiltMap;
+            if (kb.nKey.wasPressedThisFrame) _showTags = !_showTags;
+            if (kb.f1Key.wasPressedThisFrame) ToggleHelp();
+            if (kb.escapeKey.wasPressedThisFrame)
+            {
+                _pickingPlayer = false;
+                _helpPanel.RemoveFromClassList("rv-help--open");
+            }
             if (kb.spaceKey.wasPressedThisFrame) viewer.TogglePlay();
             float step = kb.shiftKey.isPressed ? 1f : 5f;
             if (kb.leftArrowKey.wasPressedThisFrame) viewer.Seek(viewer.Time - step);

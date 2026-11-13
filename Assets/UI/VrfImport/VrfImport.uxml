@@ -3,60 +3,56 @@
     <ui:VisualElement name="root" class="vr-root">
         <ui:VisualElement class="vr-header">
             <ui:Label text="VALOREPLAY" class="vr-brand" />
-            <ui:Label text="Open a Valorant replay playback file (.vrp)" class="vr-subtitle" />
+            <ui:Label text="Replay library" class="vr-subtitle vr-grow" />
+            <ui:VisualElement class="vr-folder">
+                <ui:Label text="FOLDER" class="vr-folder-caption" />
+                <ui:TextField name="folder-field" class="vr-folder-field" />
+                <ui:Button name="browse-button" text="Change…" class="vr-button vr-button--small" />
+                <ui:Button name="refresh-button" text="Refresh" class="vr-button vr-button--small" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement class="vr-body">
             <ui:VisualElement class="vr-card vr-sidebar">
-                <ui:VisualElement class="vr-row vr-section-row">
-                    <ui:Label text="REPLAYS FOLDER" class="vr-section-title vr-grow" />
-                    <ui:Button name="refresh-button" text="Refresh" class="vr-button vr-button--small" />
+                <ui:VisualElement class="vr-row vr-list-head">
+                    <ui:Label name="count-label" text="REPLAYS" class="vr-section-title vr-grow" />
+                    <ui:DropdownField name="map-filter" class="vr-map-filter" />
                 </ui:VisualElement>
-                <ui:VisualElement class="vr-row">
-                    <ui:TextField name="folder-field" class="vr-grow vr-path-field" />
-                    <ui:Button name="browse-button" text="Browse…" class="vr-button" />
-                </ui:VisualElement>
-                <ui:Label name="folder-label" class="vr-muted vr-folder-label" />
-                <ui:ListView name="file-list" class="vr-file-list" fixed-item-height="40" selection-type="Single" />
-                <ui:Label name="file-info" class="vr-muted vr-file-info" />
-
-                <ui:VisualElement class="vr-row vr-actions">
-                    <ui:Button name="open-button" text="OPEN" class="vr-button vr-button--primary vr-grow" />
-                </ui:VisualElement>
+                <ui:ListView name="file-list" class="vr-file-list" fixed-item-height="58" selection-type="Single" />
+                <ui:Label name="empty-label" class="vr-empty" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="vr-main">
-                <ui:VisualElement class="vr-card vr-progress-card">
-                    <ui:VisualElement class="vr-row vr-progress-head">
-                        <ui:Label name="title-label" text="No replay selected" class="vr-phase vr-grow" />
+            <ui:VisualElement name="details" class="vr-main vr-details">
+                <ui:VisualElement class="vr-card vr-match-card">
+                    <ui:VisualElement class="vr-row vr-match-head">
+                        <ui:VisualElement class="vr-grow">
+                            <ui:Label name="title-label" text="Pick a replay" class="vr-match-title" />
+                            <ui:Label name="subtitle-label" class="vr-match-sub" />
+                        </ui:VisualElement>
+                        <ui:Button name="watch-button" text="WATCH REPLAY" class="vr-button vr-button--primary vr-watch" />
                     </ui:VisualElement>
                     <ui:VisualElement class="vr-stats">
+                        <ui:VisualElement class="vr-stat"><ui:Label name="stat-score" text="–" class="vr-stat-value" /><ui:Label text="Final score" class="vr-stat-label" /></ui:VisualElement>
                         <ui:VisualElement class="vr-stat"><ui:Label name="stat-length" text="–" class="vr-stat-value" /><ui:Label text="Length" class="vr-stat-label" /></ui:VisualElement>
-                        <ui:VisualElement class="vr-stat"><ui:Label name="stat-score" text="–" class="vr-stat-value" /><ui:Label text="Score" class="vr-stat-label" /></ui:VisualElement>
                         <ui:VisualElement class="vr-stat"><ui:Label name="stat-rounds" text="–" class="vr-stat-value" /><ui:Label text="Rounds" class="vr-stat-label" /></ui:VisualElement>
                         <ui:VisualElement class="vr-stat"><ui:Label name="stat-kills" text="–" class="vr-stat-value" /><ui:Label text="Kills" class="vr-stat-label" /></ui:VisualElement>
                         <ui:VisualElement class="vr-stat"><ui:Label name="stat-plants" text="–" class="vr-stat-value" /><ui:Label text="Plants" class="vr-stat-label" /></ui:VisualElement>
-                        <ui:VisualElement class="vr-stat"><ui:Label name="stat-players" text="–" class="vr-stat-value" /><ui:Label text="Players" class="vr-stat-label" /></ui:VisualElement>
                     </ui:VisualElement>
-                    <ui:Label name="teams-label" class="vr-muted vr-file-info" />
+                    <ui:Label text="ROUNDS" class="vr-section-title" />
+                    <ui:VisualElement name="round-strip" class="vr-round-strip" />
+                    <ui:Label text="E elimination · D defused · S spike detonated · T time ran out" class="vr-legend" />
                 </ui:VisualElement>
 
-                <ui:VisualElement class="vr-card vr-log-card">
-                    <ui:VisualElement class="vr-row vr-log-head">
-                        <ui:Label text="LOG" class="vr-section-title vr-grow" />
-                        <ui:Toggle name="autoscroll-toggle" label="Auto-scroll" value="true" class="vr-inline-toggle" />
-                        <ui:Button name="copy-button" text="Copy" class="vr-button vr-button--small" />
-                        <ui:Button name="clear-button" text="Clear" class="vr-button vr-button--small" />
-                    </ui:VisualElement>
-                    <ui:ListView name="log-list" class="vr-log" virtualization-method="DynamicHeight" selection-type="None" />
+                <ui:VisualElement class="vr-teams">
+                    <ui:VisualElement name="team0" class="vr-card vr-team vr-team--0" />
+                    <ui:VisualElement name="team1" class="vr-card vr-team vr-team--1" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement class="vr-footer">
-            <ui:Label name="status-label" text="Pick a replay from the folder." class="vr-status vr-grow" />
+            <ui:Label name="status-label" class="vr-status vr-grow" />
             <ui:Button name="open-output-button" text="Show folder" class="vr-button vr-button--small" />
-            <ui:Button name="watch-button" text="WATCH REPLAY" class="vr-button vr-button--primary vr-watch" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

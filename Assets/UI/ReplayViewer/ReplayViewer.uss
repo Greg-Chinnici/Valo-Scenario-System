@@ -287,7 +287,6 @@
 .rv-time { font-size: 13px; -unity-font-style: bold; margin: 0 14px 0 10px; padding: 0; min-width: 96px; }
 .rv-speeds { flex-direction: row; }
 .rv-follow { color: var(--rv-text); margin-left: 12px; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rv-hint { color: var(--rv-muted); font-size: 10px; padding: 0; margin: 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .rv-timeline { height: 26px; justify-content: center; }
 .rv-timeline-track { height: 6px; background-color: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }
@@ -305,3 +304,76 @@
     background-color: var(--rv-text);
     border-radius: 2px;
 }
+
+/* ---------------------------------------------------------------- modes (top left) */
+.rv-top-side--left { flex-direction: column; align-items: flex-start; }
+.rv-title-row { flex-direction: row; align-items: center; }
+.rv-modes {
+    flex-direction: row;
+    margin-top: 10px;
+    background-color: var(--rv-panel);
+    border-width: 1px;
+    border-color: var(--rv-border);
+    border-radius: 5px;
+    padding: 3px;
+}
+.rv-root .rv-mode {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    border-radius: 3px;
+    color: var(--rv-muted);
+    -unity-font-style: bold;
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    margin: 0;
+}
+.rv-root .rv-mode:hover { color: var(--rv-text); background-color: var(--rv-panel-2); }
+.rv-root .rv-mode--active { background-color: var(--rv-accent); color: #FFFFFF; }
+.rv-root .rv-mode--active:hover { background-color: #FF5E6B; }
+.rv-root .rv-mode--waiting { color: var(--rv-warn); }
+.rv-mode-options { flex-direction: row; margin-top: 6px; }
+.rv-root .rv-mode-options .rv-kb-button { margin-left: 0; margin-right: 6px; }
+.rv-mode-hint { color: var(--rv-muted); font-size: 11px; padding: 0; margin: 6px 0 0 2px; max-width: 460px; white-space: normal; }
+
+/* ---------------------------------------------------------------- tools (bottom right) */
+.rv-tools { flex-direction: row; align-items: center; flex-shrink: 0; margin-left: 12px; }
+.rv-root .rv-tool {
+    background-color: var(--rv-panel-2);
+    border-color: var(--rv-border);
+    border-width: 1px;
+    border-radius: 4px;
+    color: var(--rv-muted);
+    font-size: 11px;
+    -unity-font-style: bold;
+    letter-spacing: 0.5px;
+    padding: 4px 9px;
+    margin: 0 0 0 4px;
+}
+.rv-root .rv-tool:hover { color: var(--rv-text); background-color: #2E4459; }
+.rv-root .rv-tool--on { color: #0F1923; background-color: var(--rv-text); border-color: var(--rv-text); }
+.rv-root .rv-tool:disabled { opacity: 0.35; }
+.rv-root .rv-tool--help { min-width: 30px; margin-left: 10px; }
+
+/* ---------------------------------------------------------------- shortcuts panel */
+.rv-help {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    width: 780px;
+    max-width: 92%;
+    background-color: rgba(15, 25, 35, 0.97);
+    border-width: 1px;
+    border-color: var(--rv-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: none;
+}
+.rv-help--open { display: flex; }
+.rv-help-head { flex-direction: row; align-items: center; margin-bottom: 4px; }
+.rv-help-title { flex-grow: 1; font-size: 14px; -unity-font-style: bold; letter-spacing: 2px; padding: 0; margin: 0; }
+.rv-help-columns { flex-direction: row; }
+.rv-help-col { flex-grow: 1; flex-basis: 0; margin-right: 16px; }
+.rv-help-group { color: var(--rv-accent); font-size: 11px; -unity-font-style: bold; letter-spacing: 1.5px; padding: 0; margin: 10px 0 4px 0; }
+.rv-help-line { font-size: 12px; padding: 0; margin: 2px 0; white-space: normal; }

@@ -27,7 +27,17 @@ namespace ValoReplay.Play
 
         /// <summary>The AI plays the round and takes orders.</summary>
         public bool Active => _ai != null && !_briefing;
+        /// <summary>In command mode or getting there (briefing the AI).</summary>
+        public bool Busy => _ai != null || _briefing;
         public RoundAi Ai => _ai;
+
+        /// <summary>Takes command from the current moment, or gives it back (the HUD's mode bar and C).</summary>
+        public void Toggle()
+        {
+            if (viewer == null || viewer.Replay == null) return;
+            if (Busy) End("Back to the recording");
+            else StartCoroutine(Begin());
+        }
 
         private static readonly Color MoveColor = new Color(0.9f, 0.95f, 1f), HoldColor = new Color(0.35f, 0.85f, 1f);
 
@@ -152,11 +162,7 @@ namespace ValoReplay.Play
         {
             if (viewer == null || viewer.Replay == null) return;
             var kb = Keyboard.current;
-            if (kb != null && kb.cKey.wasPressedThisFrame)
-            {
-                if (_ai != null || _briefing) End("Back to the recording");
-                else StartCoroutine(Begin());
-            }
+            if (kb != null && kb.cKey.wasPressedThisFrame) Toggle();
             if (!Active) return;
 
             _ai.Advance(null);
@@ -384,8 +390,7 @@ namespace ValoReplay.Play
                 text.Append("\n<size=11><color=#9AA4AE>L-click select (Shift adds) · R-click move · F plant / defuse / pick up · " +
                             "G hold, facing the cursor · X back to the AI · C leave</color></size>");
             }
-            else if (!_briefing)
-                text.Append("<size=11><color=#9AA4AE>C  take command: the AI plays the round from here and takes your orders</color></size>");
+            // (how to enter command mode is the HUD's mode bar now)
             if (_note != null && Time.unscaledTime < _noteUntil) text.Append(text.Length > 0 ? "\n" : "").Append($"<color=#FFC233>{_note}</color>");
             if (text.Length == 0) return;
             var content = new GUIContent(text.ToString());
