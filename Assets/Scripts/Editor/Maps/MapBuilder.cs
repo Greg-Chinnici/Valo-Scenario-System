@@ -43,6 +43,117 @@ namespace ValoReplay.EditorTools.Maps
             Build(Path.GetFileName(dir.TrimEnd('/', '\\')));
         }
 
+        // ------------------------------------------------------------------------------------------ style
+        // Grey (the default) builds maps in near-greys: colour textures and tints keep only a trace of their colour and
+        // a little less contrast, so the maps read as a neutral backdrop rather than the game's own art. Shapes, normal
+        // maps and lighting are unchanged. Off copies the exported textures as they are. Rebuild a map to apply.
+        private const string GreyPref = "ValoReplay.Maps.GreyTextures";
+        private const string GreyMenu = "ValoReplay/Maps/Grey Textures";
+        private const float Saturation = 0.12f;     // share of the original colour kept
+        private const float Contrast = 0.85f;       // detail kept around each texture's mean brightness
+        private static readonly Color GreyTint = new Color(1f, 1.01f, 1.04f);   // the same cool grey as the viewer's plain mode
+
+        internal static bool Grey
+        {
+            get => EditorPrefs.GetBool(GreyPref, true);
+            set => EditorPrefs.SetBool(GreyPref, value);
+        }
+
+        private static string StyleTag => (Grey ? $"grey s{Saturation} c{Contrast}" : "original") + (LowPoly ? $" low{LowPolyTextureSize}" : "");
+
+        // Low poly (on by default) draws every mesh with about a third of its triangles, flat shaded, without normal
+        // maps and with smaller textures. Colliders keep the full meshes, so sight lines, shots and movement are the
+        // same either way. Rebuild a map to apply.
+        private const string LowPolyPref = "ValoReplay.Maps.LowPoly";
+        private const string LowPolyMenu = "ValoReplay/Maps/Low Poly";
+        private const float LowPolyRatio = 0.3f;        // share of each mesh's triangles kept
+        private const int LowPolyMinTriangles = 48;     // smaller meshes keep all theirs (they are still flat shaded)
+        internal const int LowPolyTextureSize = 256;
+        internal const int TextureSize = 1024;
+
+        internal static bool LowPoly
+        {
+            get => EditorPrefs.GetBool(LowPolyPref, true);
+            set => EditorPrefs.SetBool(LowPolyPref, value);
+        }
+
+        [MenuItem(LowPolyMenu, false, 101)]
+        private static void ToggleLowPoly()
+        {
+            LowPoly = !LowPoly;
+            Debug.Log($"[MapBuilder] Low poly {(LowPoly ? "on" : "off")}. Rebuild maps (ValoReplay > Maps > Build) to apply.");
+        }
+
+        [MenuItem(LowPolyMenu, true)]
+        private static bool ToggleLowPolyValidate()
+        {
+            Menu.SetChecked(LowPolyMenu, LowPoly);
+            return true;
+        }
+
+        [MenuItem(GreyMenu, false, 100)]
+        private static void ToggleGrey()
+        {
+            Grey = !Grey;
+            Debug.Log($"[MapBuilder] Grey textures {(Grey ? "on" : "off")}. Rebuild maps (ValoReplay > Maps > Build) to apply.");
+        }
+
+        [MenuItem(GreyMenu, true)]
+        private static bool ToggleGreyValidate()
+        {
+            Menu.SetChecked(GreyMenu, Grey);
+            return true;
+        }
+
+        private static Color Desaturate(Color c)
+        {
+            float l = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+            return new Color(Mathf.Lerp(l, c.r, Saturation) * GreyTint.r,
+                             Mathf.Lerp(l, c.g, Saturation) * GreyTint.g,
+                             Mathf.Lerp(l, c.b, Saturation) * GreyTint.b, c.a);
+        }
+
+        /// <summary>A colour texture into the build: copied as is, or greyed (alpha kept, so cut-outs keep their holes).</summary>
+        private static void WriteColour(string from, string to, bool restyle)
+        {
+            if (!File.Exists(from)) return;
+            if (!Grey)
+            {
+                if (restyle) File.Copy(from, to, true); else CopyIfChanged(from, to);
+                return;
+            }
+            if (!restyle && File.Exists(to) && File.GetLastWriteTimeUtc(to) >= File.GetLastWriteTimeUtc(from)) return;
+
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+            try
+            {
+                if (!tex.LoadImage(File.ReadAllBytes(from)))
+                {
+                    Debug.LogWarning($"[MapBuilder] Could not read {from}; copied without greying.");
+                    File.Copy(from, to, true);
+                    return;
+                }
+                var px = tex.GetPixels32();
+                double sum = 0;
+                for (int i = 0; i < px.Length; i++) sum += 0.2126 * px[i].r + 0.7152 * px[i].g + 0.0722 * px[i].b;
+                float mean = px.Length > 0 ? (float)(sum / px.Length) : 128f;
+                for (int i = 0; i < px.Length; i++)
+                {
+                    var c = px[i];
+                    float l = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+                    float g = mean + (l - mean) * Contrast;
+                    px[i] = new Color32(Byte((g + (c.r - l) * Saturation) * GreyTint.r),
+                                        Byte((g + (c.g - l) * Saturation) * GreyTint.g),
+                                        Byte((g + (c.b - l) * Saturation) * GreyTint.b), c.a);
+                }
+                tex.SetPixels32(px);
+                File.WriteAllBytes(to, tex.EncodeToPNG());
+            }
+            finally { UnityEngine.Object.DestroyImmediate(tex); }
+        }
+
+        private static byte Byte(float v) => (byte)Mathf.Clamp(Mathf.RoundToInt(v), 0, 255);
+
         public static List<string> ExportedMaps() =>
             Directory.Exists(ExportRoot)
                 ? Directory.GetDirectories(ExportRoot).Where(d => File.Exists(Path.Combine(d, "map.json"))).Select(Path.GetFileName).OrderBy(n => n).ToList()
@@ -66,7 +177,8 @@ namespace ValoReplay.EditorTools.Maps
                 var textures = ImportTextures(manifest, src, dst, mapName);
                 var materials = BuildMaterials(manifest, textures, dst, mapName);
                 var meshes = BuildMeshes(raw, dst, mapName);
-                var prefab = BuildPrefab(manifest, raw, meshes, materials, dst, mapName);
+                var render = LowPoly ? LowPolyMeshes(meshes, dst, mapName) : meshes;
+                var prefab = BuildPrefab(manifest, raw, meshes, render, materials, dst, mapName);
                 Register(mapName, levelPath, prefab);
                 Debug.Log($"[MapBuilder] {mapName}: {meshes.Length} meshes, {materials.Length} materials, {manifest.objects.Count} objects -> {AssetDatabase.GetAssetPath(prefab)}");
             }
@@ -100,15 +212,26 @@ namespace ValoReplay.EditorTools.Maps
             MaskMaps.Clear();
             foreach (var n in normals) NormalMaps.Add(n);
 
+            // the style the existing textures were written in, kept beside them (dot files are ignored by Unity)
+            string styleFile = $"{dst}/Textures/.style";
+            bool restyle = !File.Exists(styleFile) ? Grey : File.ReadAllText(styleFile).Trim() != StyleTag;
+
             AssetDatabase.StartAssetEditing();
             try
             {
                 int i = 0, total = colour.Count + normals.Count + mras.Count;
-                foreach (var file in colour.Concat(normals))
+                foreach (var file in colour)
+                {
+                    if (i++ % 20 == 0) EditorUtility.DisplayProgressBar($"Building {mapName}", $"{(Grey ? "Greying" : "Copying")} textures ({i}/{total})", 0.1f + 0.3f * i / Math.Max(1, total));
+                    if (normals.Contains(file)) continue;     // a normal map is never greyed
+                    WriteColour(Path.Combine(src, "textures", file), $"{dst}/Textures/{file}", restyle);
+                }
+                foreach (var file in normals)
                 {
                     if (i++ % 20 == 0) EditorUtility.DisplayProgressBar($"Building {mapName}", $"Copying textures ({i}/{total})", 0.1f + 0.3f * i / Math.Max(1, total));
                     CopyIfChanged(Path.Combine(src, "textures", file), $"{dst}/Textures/{file}");
                 }
+                File.WriteAllText(styleFile, StyleTag);
                 foreach (var file in mras)
                 {
                     if (i++ % 10 == 0) EditorUtility.DisplayProgressBar($"Building {mapName}", $"Converting mask maps ({i}/{total})", 0.1f + 0.3f * i / Math.Max(1, total));
@@ -199,19 +322,19 @@ namespace ValoReplay.EditorTools.Maps
         {
             textures.ByFile.TryGetValue(DiffuseFile(e) ?? "", out var diffuse);
             textures.ByFile.TryGetValue(NormalFile(e) ?? "", out var normal);
+            if (LowPoly) normal = null;      // flat faces: surface bumps would bring the detail back
             textures.MaskByMra.TryGetValue(MraFile(e) ?? "", out var mask);
 
             // BLENDMODE from the importer: 1 = masked (decals, papers, foliage cards). 0 and 2 both appear on opaque
             // surfaces, so translucency is taken from the material name / shader instead.
             float blend = e.ParamFloat("BLENDMODE", 2f);
-            string lower = (e.name + " " + e.shader).ToLowerInvariant();
-            var surface = lower.Contains("glass") || lower.Contains("opacity") || lower.Contains("water") || lower.Contains("flame")
-                ? Surface.Transparent : Mathf.Approximately(blend, 1f) ? Surface.Cutout : Surface.Opaque;
+            var surface = SeeThrough(e) ? Surface.Transparent : Mathf.Approximately(blend, 1f) ? Surface.Cutout : Surface.Opaque;
             bool twoSided = e.ParamFloat("TWOSIDED", 0f) > 0.5f || surface == Surface.Cutout;
 
             var tint = ToColor(e.Param("Tint"), Color.white);
             var baseColor = diffuse != null ? tint : ToColor(e.Param("DiffuseColor"), Color.gray) * tint;
             if (surface == Surface.Transparent) baseColor.a = Mathf.Min(baseColor.a, 0.35f);
+            if (Grey) baseColor = Desaturate(baseColor);
 
             mat.SetTexture("_BaseMap", diffuse);
             mat.SetColor("_BaseColor", baseColor);
@@ -234,6 +357,27 @@ namespace ValoReplay.EditorTools.Maps
                 BaseShaderGUI.SetMaterialKeywords(mat, LitGUI.SetMaterialKeywords);
             }
             else BaseShaderGUI.SetMaterialKeywords(mat);
+        }
+
+        private static readonly string[] SolidGlass = { "opaque", "shard", "stylized", "hourglass", "trim", "palette" };
+
+        /// <summary>
+        /// Drawn see-through, and left out of collision (sight, shots and movement pass): glass panes, water surfaces,
+        /// decals and flames. Names alone over-match, so these stay solid: radianite crystals ("GlassShardGlow"), opaque
+        /// or stylized (fake interior) glass, glass trims, and floors, towers or props with "Water" in the name (blend
+        /// floors such as HerringBoneWater, WaterTower, WaterFountain).
+        /// </summary>
+        private static bool SeeThrough(MaterialEntry e)
+        {
+            string name = (e.name ?? "").ToLowerInvariant();
+            string shader = (e.shader ?? "").ToLowerInvariant();
+            if (name.Contains("flame") || shader.Contains("flame")) return true;
+            if (shader.Contains("opacity")) return true;                                    // decals, puddles, cracks
+            if (name.Contains("waterfall")) return true;
+            if ((shader.Contains("water") && !shader.Contains("blend")) || name.StartsWith("water_")) return true;
+            if (name.Contains("glass") || shader.Contains("glass"))
+                return !SolidGlass.Any(name.Contains);
+            return false;
         }
 
         private static Color ToColor(float[] v, Color fallback) =>
@@ -260,6 +404,25 @@ namespace ValoReplay.EditorTools.Maps
                 else AssetDatabase.AddObjectToAsset(result[m], path);
             }
             AssetDatabase.SaveAssets();
+            return result;
+        }
+
+        /// <summary>Simplified, flat-shaded copies of the meshes for drawing (saved with them).</summary>
+        private static Mesh[] LowPolyMeshes(Mesh[] meshes, string dst, string mapName)
+        {
+            string path = $"{dst}/{mapName}_Meshes.asset";
+            var result = new Mesh[meshes.Length];
+            long before = 0, after = 0;
+            for (int m = 0; m < meshes.Length; m++)
+            {
+                if (m % 25 == 0) EditorUtility.DisplayProgressBar($"Building {mapName}", $"Low poly meshes ({m}/{meshes.Length})", 0.7f + 0.1f * m / meshes.Length);
+                for (int s = 0; s < meshes[m].subMeshCount; s++) before += meshes[m].GetIndexCount(s) / 3;
+                result[m] = MeshSimplifier.Simplify(meshes[m], LowPolyRatio, LowPolyMinTriangles);
+                for (int s = 0; s < result[m].subMeshCount; s++) after += result[m].GetIndexCount(s) / 3;
+                AssetDatabase.AddObjectToAsset(result[m], path);
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[MapBuilder] {mapName}: low poly {after:N0} of {before:N0} triangles ({100.0 * after / Math.Max(1, before):F0}%)");
             return result;
         }
 
@@ -312,9 +475,12 @@ namespace ValoReplay.EditorTools.Maps
         }
 
         // ------------------------------------------------------------------------------------------ prefab
-        private static GameObject BuildPrefab(MapManifest manifest, List<RawMesh> raw, Mesh[] meshes, Material[] materials, string dst, string mapName)
+        /// <summary><paramref name="meshes"/> collide; <paramref name="render"/> (the same, or their low poly copies) are drawn.</summary>
+        private static GameObject BuildPrefab(MapManifest manifest, List<RawMesh> raw, Mesh[] meshes, Mesh[] render, Material[] materials, string dst, string mapName)
         {
             var root = new GameObject(mapName);
+            string meshPath = $"{dst}/{mapName}_Meshes.asset";
+            var solidParts = new Dictionary<(int, ulong), Mesh>();
             try
             {
                 var groups = new Dictionary<string, Transform>();
@@ -335,17 +501,18 @@ namespace ValoReplay.EditorTools.Maps
                     var go = new GameObject(o.name);
                     go.transform.SetParent(parent, false);
                     ApplyMatrix(go.transform, MapSpace.Matrix(o.matrix));
-                    go.AddComponent<MeshFilter>().sharedMesh = meshes[o.mesh];
+                    go.AddComponent<MeshFilter>().sharedMesh = render[o.mesh];
                     var mr = go.AddComponent<MeshRenderer>();
                     var subs = raw[o.mesh].Submeshes;
                     var mats = new Material[subs.Count];
-                    bool anyTransparent = false;
+                    ulong solid = 0;        // bit s: submesh s is opaque
                     for (int s = 0; s < subs.Count; s++)
                     {
                         int slot = subs[s].Slot;
                         int mi = o.materials != null && o.materials.Length > 0 ? o.materials[Mathf.Clamp(slot, 0, o.materials.Length - 1)] : -1;
                         mats[s] = mi >= 0 && mi < materials.Length ? materials[mi] : null;
-                        if (mats[s] != null && mats[s].GetFloat("_Surface") > 0.5f) anyTransparent = true;
+                        bool transparent = mats[s] != null && mats[s].GetFloat("_Surface") > 0.5f;
+                        if (!transparent && s < 64) solid |= 1UL << s;
                     }
                     mr.sharedMaterials = mats;
 
@@ -354,14 +521,39 @@ namespace ValoReplay.EditorTools.Maps
                     else
                     {
                         flags |= StaticEditorFlags.NavigationStatic;
-                        if (!anyTransparent) go.AddComponent<MeshCollider>().sharedMesh = meshes[o.mesh];
+                        // glass and water are seen and shot through, so only the opaque parts collide: a window frame
+                        // or a floor with a puddle decal still blocks sight, bullets and movement
+                        var collision = CollisionMesh(o.mesh, meshes[o.mesh], subs.Count, solid, solidParts, meshPath);
+                        if (collision != null) go.AddComponent<MeshCollider>().sharedMesh = collision;
                     }
                     GameObjectUtility.SetStaticEditorFlags(go, flags);
                 }
+                if (solidParts.Count > 0) AssetDatabase.SaveAssets();
                 string path = $"{dst}/{mapName}.prefab";
                 return PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally { UnityEngine.Object.DestroyImmediate(root); }
+        }
+
+        /// <summary>The mesh an object collides with: the whole mesh when every part is opaque, none when no part is,
+        /// and otherwise a copy holding only the opaque parts (made once per mesh and set of parts, saved with the
+        /// map's meshes).</summary>
+        private static Mesh CollisionMesh(int index, Mesh mesh, int submeshes, ulong solid, Dictionary<(int, ulong), Mesh> cache, string assetPath)
+        {
+            ulong all = submeshes >= 64 ? ulong.MaxValue : (1UL << submeshes) - 1;
+            if (solid == 0) return null;
+            if (solid == all || submeshes > 64) return mesh;
+            if (cache.TryGetValue((index, solid), out var part)) return part;
+
+            var triangles = new List<int>();
+            for (int s = 0; s < submeshes && s < 64; s++)
+                if ((solid & (1UL << s)) != 0) triangles.AddRange(mesh.GetTriangles(s));
+            part = new Mesh { name = mesh.name + "_Solid", indexFormat = mesh.indexFormat };
+            part.SetVertices(mesh.vertices);
+            part.SetTriangles(triangles, 0, true);
+            AssetDatabase.AddObjectToAsset(part, assetPath);
+            cache[(index, solid)] = part;
+            return part;
         }
 
         /// <summary>Row-major Unity-space matrix -> local TRS (negative determinant becomes a negative X scale).</summary>
@@ -406,7 +598,10 @@ namespace ValoReplay.EditorTools.Maps
             if (!assetPath.StartsWith(MapBuilder.AssetRoot + "/", StringComparison.Ordinal) || !assetPath.Contains("/Textures/")) return;
             var ti = (TextureImporter)assetImporter;
             string file = Path.GetFileName(assetPath);
-            ti.maxTextureSize = 1024;
+            // colour textures are rewritten when the style changes, so they are reimported at the low poly size
+            bool colour = !MapBuilder.NormalMaps.Contains(file) && !MapBuilder.MaskMaps.Contains(file) &&
+                          !file.EndsWith("_NM.png", StringComparison.OrdinalIgnoreCase) && !file.EndsWith("_MS.png", StringComparison.OrdinalIgnoreCase);
+            ti.maxTextureSize = colour && MapBuilder.LowPoly ? MapBuilder.LowPolyTextureSize : MapBuilder.TextureSize;
             ti.mipmapEnabled = true;
             ti.textureCompression = TextureImporterCompression.Compressed;
             ti.anisoLevel = 4;
