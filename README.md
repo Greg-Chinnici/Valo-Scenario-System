@@ -5,6 +5,10 @@ any player and play the rest in first person, or hand every player to the AI and
 an AI fitted to how the real players in that match played. It decides from what its team could know, not from where
 everyone really is.
 
+![Taking over Raze in a round on Haven, dying, restarting from the takeover and winning the round, then back to the replay](docs/media/play-as.gif)
+
+*Play as: take over a player mid-round, restart from that moment as often as you like, then go back to the replay.*
+
 ## A replay you can change
 
 A recording only shows one way a round went. ValoReplay restarts the round from any moment as a simulation. Up to that
@@ -37,6 +41,11 @@ keeps an estimate of the areas they are probably in. The AI builds a *situation*
 
 It never reads where enemies really are. The Intel mode shows this same blackboard, so you can see why an agent did
 what it did.
+
+![Intel mode on Breeze: one team's ghost markers, likely enemy areas and the knowledge panel](docs/media/intel.png)
+
+*Intel mode: where this team last saw or heard each enemy, how sure it still is, the areas they are probably in, and
+what it knows of their buy and abilities.*
 
 **What it can do.** The utility brain ([UtilityBrain.cs](Assets/ThirdParty/ValorantReplay.Sim/UtilityBrain.cs))
 scores five actions:
@@ -155,6 +164,8 @@ identifies the players before a replay is published here.
    **ValoReplay > Characters > Set Up Mixamo Character**. Without them, players use the built-in mannequin.
 4. Play the `VrfImport` scene: it lists the replays in `data/replays`. Pick one and press **Watch Replay**. Press F1 in
    the viewer for shortcuts.
+
+![The replay library: every replay with its score and rounds, and the selected match's scoreboard](docs/media/library.png)
 
 ## The simulation outside Unity
 
