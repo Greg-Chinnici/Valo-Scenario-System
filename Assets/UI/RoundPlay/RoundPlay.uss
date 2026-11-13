@@ -93,6 +93,39 @@
 .rp-spec-info { font-size: 13px; padding: 0; margin: 0 0 6px 0; }
 .rp-spec-hint { font-size: 10px; color: var(--rp-muted); padding: 0; margin: 0; }
 
+/* ---------------------------------------------------------------- players (hold Tab) */
+.rp-board {
+    position: absolute;
+    left: 0; right: 0; top: 16%;
+    flex-direction: row;
+    justify-content: center;
+    display: none;
+}
+.rp-board--open { display: flex; }
+.rp-board-team {
+    width: 340px;
+    background-color: rgba(15, 25, 35, 0.88);
+    border-radius: 6px;
+    border-top-width: 3px;
+    padding: 10px 14px 8px 14px;
+    margin: 0 8px;
+}
+.rp-board-team--ally { border-color: var(--rp-team1); }
+.rp-board-team--enemy { border-color: var(--rp-team0); }
+.rp-board-head { flex-direction: row; justify-content: space-between; align-items: flex-end; margin-bottom: 6px; }
+.rp-board-title { font-size: 12px; -unity-font-style: bold; letter-spacing: 1.5px; padding: 0; margin: 0; }
+.rp-board-team--ally .rp-board-title { color: var(--rp-team1); }
+.rp-board-team--enemy .rp-board-title { color: var(--rp-team0); }
+.rp-board-count { font-size: 22px; -unity-font-style: bold; padding: 0; margin: 0; }
+.rp-board-row { flex-direction: row; align-items: center; padding: 4px 0; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.rp-board-row > Label { padding: 0; margin: 0; }
+.rp-board-agent { width: 90px; font-size: 13px; -unity-font-style: bold; }
+.rp-board-name { flex-grow: 1; font-size: 12px; color: var(--rp-muted); overflow: hidden; }
+.rp-board-status { width: 48px; font-size: 11px; -unity-font-style: bold; letter-spacing: 1px; color: var(--rp-muted); -unity-text-align: middle-right; }
+.rp-board-row--you .rp-board-agent { color: var(--rp-warn); }
+.rp-board-row--dead { opacity: 0.35; }
+.rp-board-row--dead .rp-board-status { color: var(--rp-accent); }
+
 /* ---------------------------------------------------------------- bottom */
 .rp-bottom { flex-direction: row; align-items: flex-end; }
 .rp-vitals { width: 260px; background-color: var(--rp-panel); padding: 8px 12px; border-radius: 6px; }

@@ -11,7 +11,7 @@
                 <ui:Label name="phase" class="rp-phase" />
             </ui:VisualElement>
             <ui:VisualElement class="rp-top-side rp-top-side--right" picking-mode="Ignore">
-                <ui:Label text="ESC  menu   ·   V  spectate" class="rp-hint" />
+                <ui:Label text="ESC  menu   ·   V  spectate   ·   TAB  players" class="rp-hint" />
                 <ui:VisualElement name="feed" class="rp-feed" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
@@ -36,6 +36,11 @@
                 <ui:Label text="LMB / →  next    ·    RMB / ←  previous    ·    V  back to your agent" class="rp-spec-hint" />
             </ui:VisualElement>
             <ui:Label name="message" class="rp-message" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="board" class="rp-board" picking-mode="Ignore">
+            <ui:VisualElement name="board-allies" class="rp-board-team rp-board-team--ally" picking-mode="Ignore" />
+            <ui:VisualElement name="board-enemies" class="rp-board-team rp-board-team--enemy" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <ui:VisualElement class="rp-bottom" picking-mode="Ignore">
@@ -72,7 +77,7 @@
                     <ui:Button name="viewer-button" text="BACK TO REPLAY" class="rp-menu-button" />
                     <ui:Button name="import-button" text="BACK TO IMPORT" class="rp-menu-button" />
                     <ui:VisualElement class="rp-grow" />
-                    <ui:Label text="WASD move · Shift walk · Ctrl crouch · Space jump&#10;LMB fire · R reload · 1 / 2 / 3 or wheel weapons&#10;V spectate (LMB / RMB switch) · Esc menu" class="rp-controls" />
+                    <ui:Label text="WASD move · Shift walk · Ctrl crouch · Space jump&#10;LMB fire · R reload · 1 / 2 / 3 or wheel weapons&#10;V spectate (LMB / RMB switch) · Tab players · Esc menu" class="rp-controls" />
                 </ui:VisualElement>
                 <ui:ScrollView class="rp-settings" mode="Vertical">
                     <ui:Label text="MOUSE &amp; VIEW" class="rp-set-title" />

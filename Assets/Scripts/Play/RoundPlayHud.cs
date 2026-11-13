@@ -67,6 +67,7 @@ namespace ValoReplay.Play
             _reserve = _root.Q<Label>("reserve");
             _specName = _root.Q<Label>("spec-name");
             _specInfo = _root.Q<Label>("spec-info");
+            _board = _root.Q("board");
             _abilities = new AbilityChips(compact: false);
             _root.Q("abilities").Add(_abilities.Root);
             Ui.Show(_message, false);
@@ -94,6 +95,75 @@ namespace ValoReplay.Play
             _playingAs.text = $"PLAYING AS {p.AgentName.ToUpperInvariant()}{(p.Name.Length > 0 ? "  ·  " + p.Name : "")}";
             _playingAs.EnableInClassList("rv-team0-text", p.Team == 0);
             if (round.Error != null) ShowMessage(round.Error, 6f);
+            BuildBoard();
+        }
+
+        // ------------------------------------------------------------------ players (hold Tab)
+        private sealed class BoardRow
+        {
+            public int Player;
+            public VisualElement Root;
+            public Label Status;
+        }
+
+        private VisualElement _board;
+        private readonly List<BoardRow> _boardRows = new List<BoardRow>();
+        private Label _alliesCount, _enemiesCount;
+
+        /// <summary>Both teams, yours first and you at the top of it.</summary>
+        private void BuildBoard()
+        {
+            _boardRows.Clear();
+            var r = round.Replay;
+            _alliesCount = BoardTeam(_root.Q("board-allies"), "YOUR TEAM", r, ally: true);
+            _enemiesCount = BoardTeam(_root.Q("board-enemies"), "ENEMIES", r, ally: false);
+        }
+
+        private Label BoardTeam(VisualElement panel, string title, VrpReplay r, bool ally)
+        {
+            panel.Clear();
+            var head = Ui.Box("rp-board-head");
+            head.Add(Ui.Label(title, "rp-board-title"));
+            var count = Ui.Label("", "rp-board-count");
+            head.Add(count);
+            panel.Add(head);
+            var players = new List<int>();
+            for (int i = 0; i < r.Players.Count; i++)
+                if ((r.Players[i].Team == round.Team) == ally) players.Add(i);
+            players.Sort((a, b) => (b == round.Player).CompareTo(a == round.Player));
+            foreach (int i in players)
+            {
+                var p = r.Players[i];
+                var row = new BoardRow { Player = i, Root = Ui.Box("rp-board-row") };
+                row.Root.EnableInClassList("rp-board-row--you", i == round.Player);
+                row.Root.Add(Ui.Label(i == round.Player ? "YOU" : p.AgentName, "rp-board-agent"));
+                row.Root.Add(Ui.Label(i == round.Player ? p.AgentName : p.Name, "rp-board-name"));
+                row.Status = Ui.Label("", "rp-board-status");
+                row.Root.Add(row.Status);
+                panel.Add(row.Root);
+                _boardRows.Add(row);
+            }
+            return count;
+        }
+
+        private void UpdateBoard()
+        {
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            bool open = kb != null && kb.tabKey.isPressed && _boardRows.Count > 0 && Time.timeScale > 0f;
+            _board.EnableInClassList("rp-board--open", open);
+            if (!open) return;
+            int allies = 0, enemies = 0, allyTotal = 0, enemyTotal = 0;
+            var r = round.Replay;
+            foreach (var row in _boardRows)
+            {
+                bool ally = r.Players[row.Player].Team == round.Team;
+                bool alive = round.IsAlive(row.Player);
+                if (ally) { allyTotal++; if (alive) allies++; } else { enemyTotal++; if (alive) enemies++; }
+                row.Root.EnableInClassList("rp-board-row--dead", !alive);
+                Ui.Text(row.Status, alive ? "ALIVE" : "DEAD");
+            }
+            Ui.Text(_alliesCount, $"{allies} / {allyTotal}");
+            Ui.Text(_enemiesCount, $"{enemies} / {enemyTotal}");
         }
 
         private float _messageUntil = -1f;
@@ -185,6 +255,7 @@ namespace ValoReplay.Play
 
             UpdateKillFeed(t);
             UpdateSpectating(t);
+            UpdateBoard();
             UpdateWeapon();
             UpdateCrosshair();
 

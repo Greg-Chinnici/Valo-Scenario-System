@@ -225,6 +225,28 @@ namespace ValoReplay.Play
             PlayerHit?.Invoke(p, region, dmg, kill);
         }
 
+        /// <summary>
+        /// Is this player alive now? Once the AI round runs, the sim decides. Otherwise the recording, less the players
+        /// you eliminated and the recorded deaths your agent dealt after the takeover (those no longer happen).
+        /// </summary>
+        public bool IsAlive(int player)
+        {
+            if (Replay == null || player < 0 || player >= Replay.Players.Count) return false;
+            if (player == Player) return !Dead;
+            if (Ai != null && Ai.Started && player < Ai.Sim.Agents.Count) return Ai.Sim.Agents[player].Alive;
+            if (ghosts != null && ghosts.Eliminated.Contains(player)) return false;
+            int ri = Replay.RoundAt(TakeoverTime);
+            float start = ri >= 0 ? Replay.Rounds[ri].StartTime : 0f;
+            float t = Now;
+            foreach (var k in Replay.Kills)
+            {
+                if (k.Victim != player || k.Time < start || k.Time > t) continue;
+                if (k.Time >= TakeoverTime && k.Killer == Player) continue;
+                return false;
+            }
+            return true;
+        }
+
         /// <summary>Pause: freeze time and input, free the cursor (the pause menu calls this).</summary>
         public void SetPaused(bool paused)
         {

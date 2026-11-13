@@ -169,9 +169,10 @@ namespace ValoReplay.Maps
 
         /// <summary>
         /// Gives a MeshCollider to every mesh under the roots that is drawn with at least one opaque material but has no
-        /// collider (vista scenery excluded). MapBuilder leaves out the collider of any object with a transparent submesh,
-        /// which on Ascent drops whole floors (MidFloor_0, AtkGround_1, MarketFloorStairs_0: a puddle or decal submesh)
-        /// and cuts the attacker side off. The caller destroys the returned colliders when done.
+        /// collider (vista scenery excluded). Maps built before MapBuilder gave such objects a collider of their opaque
+        /// parts have none on any object with a transparent submesh, which on Ascent drops whole floors (MidFloor_0,
+        /// AtkGround_1, MarketFloorStairs_0: a puddle or decal submesh) and cuts the attacker side off. A rebuilt map
+        /// needs none of this. The caller destroys the returned colliders when done.
         /// </summary>
         public static List<Collider> AddMissingColliders(IEnumerable<Transform> roots)
         {
