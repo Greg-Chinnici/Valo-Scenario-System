@@ -1,0 +1,16 @@
+{
+    "name": "ValorantReplay.Sim",
+    "rootNamespace": "ValorantReplay.Sim",
+    "references": [
+        "ValorantReplay.Playback"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

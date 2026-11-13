@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The .vrp format: reader/writer, tags, agent and map catalogs. The sources live in the Unity project
+       (Assets/ThirdParty/ValorantReplay.Playback) and are compiled from there: one copy for Unity and .NET. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>ValorantReplay.Playback</RootNamespace>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\Assets\ThirdParty\ValorantReplay.Playback\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

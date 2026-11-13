@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2D45532F-81C7-4EA2-9CDB-8E951007E688}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValorantReplay.Playback", "src\ValorantReplay.Playback\ValorantReplay.Playback.csproj", "{4EE78CD4-30D9-4159-AC6F-51FAFE719828}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValorantReplay.Sim", "src\ValorantReplay.Sim\ValorantReplay.Sim.csproj", "{E9E39C4D-44D7-4B86-933B-8100871BF04A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "vrpsim", "src\vrpsim\vrpsim.csproj", "{2038FC1D-C059-441C-992E-38988AF8BAD3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{16A2D778-A37E-49F4-AA39-6B8F0188CF71}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValorantReplay.Sim.Tests", "tests\ValorantReplay.Sim.Tests\ValorantReplay.Sim.Tests.csproj", "{1EE93F23-4912-44C0-BB70-CB771B16AE10}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValorantReplay.Playback.Tests", "tests\ValorantReplay.Playback.Tests\ValorantReplay.Playback.Tests.csproj", "{02E4C435-6BF9-4859-AB64-309CC75C609F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4EE78CD4-30D9-4159-AC6F-51FAFE719828}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EE78CD4-30D9-4159-AC6F-51FAFE719828}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EE78CD4-30D9-4159-AC6F-51FAFE719828}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EE78CD4-30D9-4159-AC6F-51FAFE719828}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9E39C4D-44D7-4B86-933B-8100871BF04A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9E39C4D-44D7-4B86-933B-8100871BF04A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9E39C4D-44D7-4B86-933B-8100871BF04A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9E39C4D-44D7-4B86-933B-8100871BF04A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2038FC1D-C059-441C-992E-38988AF8BAD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2038FC1D-C059-441C-992E-38988AF8BAD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2038FC1D-C059-441C-992E-38988AF8BAD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2038FC1D-C059-441C-992E-38988AF8BAD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EE93F23-4912-44C0-BB70-CB771B16AE10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EE93F23-4912-44C0-BB70-CB771B16AE10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EE93F23-4912-44C0-BB70-CB771B16AE10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EE93F23-4912-44C0-BB70-CB771B16AE10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02E4C435-6BF9-4859-AB64-309CC75C609F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02E4C435-6BF9-4859-AB64-309CC75C609F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02E4C435-6BF9-4859-AB64-309CC75C609F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02E4C435-6BF9-4859-AB64-309CC75C609F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4EE78CD4-30D9-4159-AC6F-51FAFE719828} = {2D45532F-81C7-4EA2-9CDB-8E951007E688}
+		{E9E39C4D-44D7-4B86-933B-8100871BF04A} = {2D45532F-81C7-4EA2-9CDB-8E951007E688}
+		{2038FC1D-C059-441C-992E-38988AF8BAD3} = {2D45532F-81C7-4EA2-9CDB-8E951007E688}
+		{1EE93F23-4912-44C0-BB70-CB771B16AE10} = {16A2D778-A37E-49F4-AA39-6B8F0188CF71}
+		{02E4C435-6BF9-4859-AB64-309CC75C609F} = {16A2D778-A37E-49F4-AA39-6B8F0188CF71}
+	EndGlobalSection
+EndGlobal

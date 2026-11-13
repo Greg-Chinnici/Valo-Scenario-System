@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Round simulation and the character AI on .vrp files. The sources live in the Unity project
+       (Assets/ThirdParty/ValorantReplay.Sim) and are compiled from there: one copy for Unity and .NET. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>ValorantReplay.Sim</RootNamespace>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\Assets\ThirdParty\ValorantReplay.Sim\*.cs" Link="%(Filename)%(Extension)" />
+    <ProjectReference Include="..\ValorantReplay.Playback\ValorantReplay.Playback.csproj" />
+  </ItemGroup>
+</Project>

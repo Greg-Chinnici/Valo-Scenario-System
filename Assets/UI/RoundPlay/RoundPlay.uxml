@@ -1,0 +1,111 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="RoundPlay.uss" />
+    <ui:VisualElement name="root" class="rp-root" picking-mode="Ignore">
+        <ui:VisualElement class="rp-top" picking-mode="Ignore">
+            <ui:VisualElement class="rp-top-side" picking-mode="Ignore">
+                <ui:Label name="playing-as" class="rp-playing-as" />
+            </ui:VisualElement>
+            <ui:VisualElement class="rp-clock" picking-mode="Ignore">
+                <ui:Label name="score" class="rp-score" />
+                <ui:Label name="timer" text="–:––" class="rp-timer" />
+                <ui:Label name="phase" class="rp-phase" />
+            </ui:VisualElement>
+            <ui:VisualElement class="rp-top-side rp-top-side--right" picking-mode="Ignore">
+                <ui:Label text="ESC  menu   ·   V  spectate" class="rp-hint" />
+                <ui:VisualElement name="feed" class="rp-feed" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="rp-center" picking-mode="Ignore">
+            <ui:VisualElement name="crosshair" class="rp-crosshair" picking-mode="Ignore">
+                <ui:VisualElement name="ch-top" class="rp-ch rp-ch--v" picking-mode="Ignore" />
+                <ui:VisualElement name="ch-bottom" class="rp-ch rp-ch--v" picking-mode="Ignore" />
+                <ui:VisualElement name="ch-left" class="rp-ch rp-ch--h" picking-mode="Ignore" />
+                <ui:VisualElement name="ch-right" class="rp-ch rp-ch--h" picking-mode="Ignore" />
+                <ui:VisualElement name="ch-dot" class="rp-ch-dot" picking-mode="Ignore" />
+                <ui:VisualElement name="hitmarker" class="rp-hitmarker" picking-mode="Ignore">
+                    <ui:VisualElement class="rp-hm rp-hm--a" picking-mode="Ignore" />
+                    <ui:VisualElement class="rp-hm rp-hm--b" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="hit-text" class="rp-hit-text" picking-mode="Ignore" />
+            <ui:VisualElement name="spectate" class="rp-spectate" picking-mode="Ignore">
+                <ui:Label text="SPECTATING" class="rp-spec-kicker" />
+                <ui:Label name="spec-name" class="rp-spec-name" />
+                <ui:Label name="spec-info" class="rp-spec-info" />
+                <ui:Label text="LMB / →  next    ·    RMB / ←  previous    ·    V  back to your agent" class="rp-spec-hint" />
+            </ui:VisualElement>
+            <ui:Label name="message" class="rp-message" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="rp-bottom" picking-mode="Ignore">
+            <ui:VisualElement class="rp-vitals" picking-mode="Ignore">
+                <ui:VisualElement class="rp-hp-row" picking-mode="Ignore">
+                    <ui:Label name="hp" text="100" class="rp-hp" />
+                    <ui:VisualElement class="rp-armor-col" picking-mode="Ignore">
+                        <ui:Label name="armor" class="rp-armor" />
+                        <ui:Label name="credits" class="rp-credits" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="rp-hp-bar" picking-mode="Ignore"><ui:VisualElement name="hp-fill" class="rp-hp-fill" picking-mode="Ignore" /></ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="abilities" class="rp-abilities" picking-mode="Ignore" />
+            <ui:VisualElement class="rp-weapon" picking-mode="Ignore">
+                <ui:VisualElement name="slots" class="rp-slots" picking-mode="Ignore" />
+                <ui:Label name="weapon-name" class="rp-weapon-name" />
+                <ui:VisualElement class="rp-ammo-row" picking-mode="Ignore">
+                    <ui:Label name="ammo" class="rp-ammo" />
+                    <ui:Label name="reserve" class="rp-reserve" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rp-reload-bar" picking-mode="Ignore"><ui:VisualElement name="reload-fill" class="rp-reload-fill" picking-mode="Ignore" /></ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="pause" class="rp-pause">
+            <ui:VisualElement class="rp-pause-panel">
+                <ui:VisualElement class="rp-pause-nav">
+                    <ui:Label text="PAUSED" class="rp-pause-title" />
+                    <ui:Label name="pause-info" class="rp-pause-info" />
+                    <ui:Button name="resume-button" text="RESUME" class="rp-menu-button rp-menu-button--primary" />
+                    <ui:Button name="spectate-button" text="SPECTATE  (V)" class="rp-menu-button" />
+                    <ui:Button name="restart-button" text="RESTART FROM TAKEOVER" class="rp-menu-button" />
+                    <ui:Button name="viewer-button" text="BACK TO REPLAY" class="rp-menu-button" />
+                    <ui:Button name="import-button" text="BACK TO IMPORT" class="rp-menu-button" />
+                    <ui:VisualElement class="rp-grow" />
+                    <ui:Label text="WASD move · Shift walk · Ctrl crouch · Space jump&#10;LMB fire · R reload · 1 / 2 / 3 or wheel weapons&#10;V spectate (LMB / RMB switch) · Esc menu" class="rp-controls" />
+                </ui:VisualElement>
+                <ui:ScrollView class="rp-settings" mode="Vertical">
+                    <ui:Label text="MOUSE &amp; VIEW" class="rp-set-title" />
+                    <ui:Slider name="set-sensitivity" label="Sensitivity (Valorant)" low-value="0.05" high-value="3" show-input-field="true" class="rp-set" />
+                    <ui:Toggle name="set-invert" label="Invert Y" class="rp-set" />
+                    <ui:SliderInt name="set-fov" label="Field of view (horizontal)" low-value="70" high-value="130" show-input-field="true" class="rp-set" />
+
+                    <ui:Label text="CROSSHAIR" class="rp-set-title" />
+                    <ui:DropdownField name="set-ch-color" label="Color" class="rp-set" />
+                    <ui:Slider name="set-ch-length" label="Line length" low-value="0" high-value="20" show-input-field="true" class="rp-set" />
+                    <ui:Slider name="set-ch-thickness" label="Thickness" low-value="1" high-value="6" show-input-field="true" class="rp-set" />
+                    <ui:Slider name="set-ch-gap" label="Gap" low-value="0" high-value="20" show-input-field="true" class="rp-set" />
+                    <ui:Toggle name="set-ch-dot" label="Centre dot" class="rp-set" />
+                    <ui:Toggle name="set-ch-spread" label="Crosshair shows spread" class="rp-set" />
+
+                    <ui:Label text="GAMEPLAY" class="rp-set-title" />
+                    <ui:Slider name="set-speed" label="Game speed" low-value="0.1" high-value="2" show-input-field="true" class="rp-set" />
+                    <ui:Toggle name="set-ammo" label="Infinite ammo" class="rp-set" />
+                    <ui:Toggle name="set-shots" label="Show recorded shots" class="rp-set" />
+                    <ui:Toggle name="set-aim" label="Show other players' aim" class="rp-set" />
+                    <ui:Toggle name="set-ai" label="Round AI (applies on restart)" class="rp-set" />
+                    <ui:Toggle name="set-ai-matrix" label="AI behaviour matrix (F3)" class="rp-set" />
+
+                    <ui:Label text="VIDEO" class="rp-set-title" />
+                    <ui:Toggle name="set-map-textures" label="Map textures" class="rp-set" />
+                    <ui:Toggle name="set-vsync" label="VSync" class="rp-set" />
+                    <ui:DropdownField name="set-fps" label="FPS limit (VSync off)" class="rp-set" />
+                    <ui:Toggle name="set-shadows" label="Shadows" class="rp-set" />
+                    <ui:Toggle name="set-fullscreen" label="Fullscreen" class="rp-set" />
+
+                    <ui:Button name="reset-button" text="RESET TO DEFAULTS" class="rp-menu-button rp-reset" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

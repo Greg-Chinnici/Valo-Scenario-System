@@ -1,0 +1,183 @@
+:root {
+    --rp-text: #ECE8E1;
+    --rp-muted: #A8B3BC;
+    --rp-accent: #FF4655;
+    --rp-panel: rgba(15, 25, 35, 0.6);
+    --rp-team0: #F5545C;
+    --rp-team1: #3DC7B8;
+    --rp-warn: #F5C451;
+    --rp-credits: #E8C66A;
+    --rp-cross: #7CFFB2;
+}
+
+.rp-root { flex-grow: 1; color: var(--rp-text); padding: 14px 20px; justify-content: space-between; }
+
+/* ---------------------------------------------------------------- top */
+.rp-top { flex-direction: row; align-items: flex-start; }
+.rp-top-side { flex-grow: 1; flex-basis: 0; }
+.rp-top-side--right { align-items: flex-end; }
+.rp-playing-as { font-size: 14px; -unity-font-style: bold; letter-spacing: 1.5px; background-color: var(--rp-panel); padding: 4px 10px; border-radius: 4px; }
+.rp-hint { font-size: 11px; color: var(--rp-muted); background-color: var(--rp-panel); padding: 3px 8px; border-radius: 3px; margin-bottom: 6px; }
+.rp-clock { align-items: center; background-color: var(--rp-panel); padding: 4px 18px; border-radius: 6px; min-width: 150px; }
+.rp-score { font-size: 12px; -unity-font-style: bold; padding: 0; margin: 0; color: var(--rp-muted); }
+.rp-timer { font-size: 28px; -unity-font-style: bold; padding: 0; margin: 0; }
+.rp-phase { font-size: 10px; letter-spacing: 1px; color: var(--rp-muted); padding: 0; margin: 0; }
+.rp-phase--planted { color: var(--rp-accent); -unity-font-style: bold; }
+.rp-feed { align-items: flex-end; }
+.rp-kill {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--rp-panel);
+    border-radius: 3px;
+    padding: 3px 9px;
+    margin-bottom: 3px;
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0);
+}
+.rp-kill--yours { border-color: var(--rp-warn); background-color: rgba(60, 45, 10, 0.75); }
+.rp-kill > Label { padding: 0; margin: 0 3px; font-size: 12px; -unity-font-style: bold; }
+.rp-kill-ally { color: var(--rp-team1); }
+.rp-kill-enemy { color: var(--rp-team0); }
+.rp-kill-you { color: var(--rp-warn); }
+.rp-root .rp-kill > .rp-kill-weapon { color: var(--rp-muted); -unity-font-style: normal; }
+.rp-kill-hs { color: var(--rp-warn); font-size: 10px; }
+
+/* ---------------------------------------------------------------- centre */
+.rp-center { position: absolute; left: 0; right: 0; top: 0; bottom: 0; align-items: center; justify-content: center; }
+.rp-crosshair { width: 0; height: 0; }
+.rp-ch { position: absolute; background-color: var(--rp-cross); }
+.rp-ch--v { width: 2px; height: 6px; left: -1px; }
+.rp-ch--h { height: 2px; width: 6px; top: -1px; }
+.rp-ch-dot { position: absolute; width: 2px; height: 2px; left: -1px; top: -1px; background-color: var(--rp-cross); }
+.rp-hitmarker { position: absolute; left: 0; top: 0; opacity: 0; }
+.rp-hm { position: absolute; width: 14px; height: 2px; left: -7px; top: -1px; background-color: #FFFFFF; }
+.rp-hm--a { rotate: 45deg; }
+.rp-hm--b { rotate: -45deg; }
+.rp-hitmarker--head .rp-hm { background-color: var(--rp-warn); }
+.rp-hitmarker--kill .rp-hm { background-color: var(--rp-accent); width: 20px; left: -10px; }
+.rp-hit-text { position: absolute; top: 52%; left: 51%; font-size: 13px; -unity-font-style: bold; color: #FFFFFF; opacity: 0; padding: 0; }
+.rp-hit-text--head { color: var(--rp-warn); }
+.rp-hit-text--kill { color: var(--rp-accent); }
+.rp-message {
+    position: absolute;
+    top: 30%;
+    font-size: 20px;
+    -unity-font-style: bold;
+    background-color: rgba(15, 25, 35, 0.8);
+    padding: 10px 24px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 70%;
+    -unity-text-align: middle-center;
+}
+
+/* ---------------------------------------------------------------- spectating */
+.rp-spectate {
+    position: absolute;
+    bottom: 40px;
+    align-items: center;
+    background-color: rgba(15, 25, 35, 0.8);
+    border-radius: 6px;
+    padding: 8px 22px 10px 22px;
+    display: none;
+}
+.rp-root--spectating .rp-spectate { display: flex; }
+.rp-root--spectating .rp-crosshair,
+.rp-root--spectating .rp-bottom,
+.rp-root--spectating .rp-hit-text { display: none; }
+.rp-spec-kicker { font-size: 10px; letter-spacing: 2px; color: var(--rp-muted); -unity-font-style: bold; padding: 0; margin: 0; }
+.rp-spec-name { font-size: 22px; -unity-font-style: bold; letter-spacing: 1px; padding: 0; margin: 2px 0; }
+.rp-spec-name--ally { color: var(--rp-team1); }
+.rp-spec-name--enemy { color: var(--rp-team0); }
+.rp-spec-name--original { color: #FFC233; }
+.rp-spec-info { font-size: 13px; padding: 0; margin: 0 0 6px 0; }
+.rp-spec-hint { font-size: 10px; color: var(--rp-muted); padding: 0; margin: 0; }
+
+/* ---------------------------------------------------------------- bottom */
+.rp-bottom { flex-direction: row; align-items: flex-end; }
+.rp-vitals { width: 260px; background-color: var(--rp-panel); padding: 8px 12px; border-radius: 6px; }
+.rp-hp-row { flex-direction: row; align-items: center; }
+.rp-hp { font-size: 42px; -unity-font-style: bold; padding: 0; margin: 0 12px 0 0; }
+.rp-armor-col { justify-content: center; }
+.rp-armor { font-size: 13px; color: var(--rp-muted); padding: 0; margin: 0; -unity-font-style: bold; }
+.rp-credits { font-size: 13px; color: var(--rp-credits); padding: 0; margin: 2px 0 0 0; -unity-font-style: bold; }
+.rp-hp-bar { height: 4px; background-color: rgba(255, 255, 255, 0.15); margin-top: 4px; }
+.rp-hp-fill { height: 100%; background-color: var(--rp-text); }
+
+.rp-abilities { flex-grow: 1; align-items: center; justify-content: flex-end; }
+.rp-abilities .rv-abilities { background-color: var(--rp-panel); padding: 6px 10px; border-radius: 6px; flex-grow: 0; }
+.rp-abilities .rv-ability { flex-direction: row; align-items: center; background-color: rgba(255, 255, 255, 0.08); border-radius: 3px; padding: 3px 7px; margin-right: 5px; }
+.rp-abilities .rv-ability--empty { opacity: 0.45; }
+.rp-abilities .rv-ability-key { font-size: 13px; -unity-font-style: bold; padding: 0; margin: 0 5px 0 0; color: var(--rp-muted); }
+.rp-abilities .rv-pip { width: 7px; height: 7px; margin-right: 3px; border-width: 1px; border-color: var(--rp-muted); border-radius: 1px; }
+.rp-abilities .rv-pip--full { background-color: var(--rp-text); border-color: var(--rp-text); }
+.rp-abilities .rv-pip--temp { background-color: var(--rp-team1); border-color: var(--rp-team1); }
+.rp-abilities .rv-ability-cd { font-size: 11px; color: var(--rp-warn); padding: 0; margin: 0 0 0 2px; }
+.rp-abilities .rv-ult { font-size: 13px; -unity-font-style: bold; color: var(--rp-muted); padding: 3px 7px; margin: 0; border-radius: 3px; }
+.rp-abilities .rv-ult--ready { color: #0F1923; background-color: var(--rp-warn); }
+
+.rp-weapon { width: 260px; align-items: flex-end; background-color: var(--rp-panel); padding: 8px 12px; border-radius: 6px; }
+.rp-slots { flex-direction: column; align-items: flex-end; margin-bottom: 4px; }
+.rp-slot { font-size: 11px; color: var(--rp-muted); padding: 0; margin: 0; }
+.rp-slot--current { color: var(--rp-text); -unity-font-style: bold; }
+.rp-weapon-name { font-size: 14px; -unity-font-style: bold; letter-spacing: 1px; padding: 0; margin: 0; }
+.rp-ammo-row { flex-direction: row; align-items: flex-end; }
+.rp-ammo { font-size: 40px; -unity-font-style: bold; padding: 0; margin: 0; }
+.rp-ammo--low { color: var(--rp-accent); }
+.rp-reserve { font-size: 16px; color: var(--rp-muted); padding: 0 0 6px 6px; margin: 0; }
+.rp-reload-bar { width: 100%; height: 3px; background-color: rgba(255, 255, 255, 0.1); margin-top: 4px; }
+.rp-reload-fill { height: 100%; width: 0; background-color: var(--rp-warn); }
+
+/* ---------------------------------------------------------------- pause menu */
+.rp-grow { flex-grow: 1; }
+.rp-pause {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(8, 12, 18, 0.72);
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+.rp-pause--open { display: flex; }
+.rp-pause-panel {
+    flex-direction: row;
+    width: 960px;
+    height: 620px;
+    max-width: 94%;
+    max-height: 92%;
+    background-color: rgba(15, 25, 35, 0.97);
+    border-width: 1px;
+    border-color: #2B3B4B;
+    border-radius: 8px;
+}
+.rp-pause-nav { width: 300px; padding: 22px; border-right-width: 1px; border-color: #2B3B4B; }
+.rp-pause-title { font-size: 28px; -unity-font-style: bold; letter-spacing: 4px; color: var(--rp-accent); padding: 0; margin: 0 0 4px 0; }
+.rp-pause-info { font-size: 12px; color: var(--rp-muted); padding: 0; margin: 0 0 18px 0; white-space: normal; }
+.rp-root .rp-menu-button {
+    background-color: #1E2C3A;
+    border-color: #2B3B4B;
+    border-width: 1px;
+    border-radius: 4px;
+    color: var(--rp-text);
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    font-size: 13px;
+    padding: 10px 14px;
+    margin: 0 0 8px 0;
+    -unity-text-align: middle-left;
+}
+.rp-root .rp-menu-button:hover { background-color: #2E4459; }
+.rp-root .rp-menu-button--primary { background-color: var(--rp-accent); border-color: var(--rp-accent); color: #FFFFFF; }
+.rp-root .rp-menu-button--primary:hover { background-color: #FF5E6B; }
+.rp-controls { font-size: 11px; color: var(--rp-muted); white-space: normal; padding: 0; margin: 0; }
+
+.rp-settings { flex-grow: 1; padding: 16px 22px; }
+.rp-set-title { font-size: 11px; -unity-font-style: bold; letter-spacing: 1.5px; color: var(--rp-muted); padding: 0; margin: 16px 0 6px 0; }
+.rp-root .rp-set { margin: 3px 0; }
+.rp-root .rp-set .unity-base-field__label { min-width: 230px; color: var(--rp-text); }
+.rp-root .rp-set .unity-base-text-field__input,
+.rp-root .rp-set .unity-base-popup-field__input { background-color: #1E2C3A; border-color: #2B3B4B; color: var(--rp-text); }
+.rp-root .rp-set .unity-base-slider__dragger { background-color: var(--rp-accent); border-color: var(--rp-accent); }
+.rp-root .rp-set .unity-base-slider__tracker { background-color: #1E2C3A; border-color: #2B3B4B; }
+.rp-root .rp-set .unity-toggle__checkmark { background-color: #1E2C3A; border-color: #2B3B4B; }
+.rp-root .rp-reset { margin-top: 20px; -unity-text-align: middle-center; }

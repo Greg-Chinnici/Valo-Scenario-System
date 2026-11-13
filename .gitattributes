@@ -1,0 +1,32 @@
+# Text files: LF in the repo, native line endings in the working tree
+* text=auto
+
+# Unity YAML (Force Text serialization): merge as text, never re-flow lines
+*.unity  text eol=lf merge=unityyamlmerge
+*.prefab text eol=lf merge=unityyamlmerge
+*.asset  text eol=lf merge=unityyamlmerge
+*.mat    text eol=lf
+*.meta   text eol=lf
+*.anim   text eol=lf
+*.controller text eol=lf
+
+# Binary: never normalize or diff
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.tga  binary
+*.psd  binary
+*.exr  binary
+*.hdr  binary
+*.fbx  binary
+*.blend binary
+*.bin  binary
+*.dll  binary
+*.so   binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.vrf  binary
+*.vrp  binary
+*.ttf  binary
+*.otf  binary

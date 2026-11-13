@@ -1,0 +1,69 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="ReplayViewer.uss" />
+    <ui:VisualElement name="root" class="rv-root" picking-mode="Ignore">
+        <ui:VisualElement name="kb-tags" class="rv-name-tags" picking-mode="Ignore" />
+        <ui:VisualElement name="name-tags" class="rv-name-tags" picking-mode="Ignore" />
+
+        <ui:VisualElement class="rv-top" picking-mode="Ignore">
+            <ui:VisualElement class="rv-top-side" picking-mode="Ignore">
+                <ui:Button name="back-button" text="BACK" class="rv-button" />
+                <ui:Label name="map-label" class="rv-map" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="rv-scoreboard">
+                <ui:Label name="team0-role" class="rv-role rv-team0-text" />
+                <ui:Label name="team0-score" text="0" class="rv-score rv-team0-text" />
+                <ui:VisualElement class="rv-clock">
+                    <ui:Label name="round-label" text="ROUND –" class="rv-round" />
+                    <ui:Label name="timer-label" text="–:––" class="rv-timer" />
+                    <ui:Label name="phase-label" class="rv-phase" />
+                </ui:VisualElement>
+                <ui:Label name="team1-score" text="0" class="rv-score rv-team1-text" />
+                <ui:Label name="team1-role" class="rv-role rv-team1-text" />
+            </ui:VisualElement>
+            <ui:VisualElement class="rv-top-side rv-top-side--right" picking-mode="Ignore">
+                <ui:VisualElement name="killfeed" class="rv-killfeed" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="rv-middle" picking-mode="Ignore">
+            <ui:VisualElement name="team0-list" class="rv-team-list" />
+            <ui:VisualElement class="rv-grow rv-center" picking-mode="Ignore">
+                <ui:Label name="message" class="rv-message" />
+                <ui:VisualElement name="knowledge" class="rv-kb">
+                    <ui:VisualElement class="rv-kb-header">
+                        <ui:Label name="kb-title" class="rv-kb-title" />
+                        <ui:Label name="kb-status" class="rv-kb-status" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="kb-rows" />
+                    <ui:Label name="kb-summary" class="rv-kb-summary" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="team1-list" class="rv-team-list" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="rv-bottom">
+            <ui:VisualElement class="rv-transport">
+                <ui:Button name="prev-round" text="PREV" class="rv-button rv-button--small" />
+                <ui:Button name="back-5" text="-5s" class="rv-button rv-button--small" />
+                <ui:Button name="play-button" text="PAUSE" class="rv-button rv-button--play" />
+                <ui:Button name="fwd-5" text="+5s" class="rv-button rv-button--small" />
+                <ui:Button name="next-round" text="NEXT" class="rv-button rv-button--small" />
+                <ui:Label name="time-label" text="0:00 / 0:00" class="rv-time" />
+                <ui:VisualElement name="speed-group" class="rv-speeds" />
+                <ui:Button name="kb-team-button" text="INTEL OFF" class="rv-button rv-button--small rv-kb-button" />
+                <ui:Button name="kb-truth-button" text="HIDE ENEMIES" class="rv-button rv-button--small rv-kb-button" />
+                <ui:Label name="follow-label" class="rv-follow rv-grow" />
+                <ui:Label text="Space play · ←/→ 5s · PgUp/PgDn round · RMB orbit · LMB pan / click player · Wheel zoom · Esc free cam · Enter play as followed · M 3D map · B team intel · H hide enemies" class="rv-hint" />
+            </ui:VisualElement>
+            <ui:VisualElement name="timeline" class="rv-timeline">
+                <ui:VisualElement class="rv-timeline-track" picking-mode="Ignore">
+                    <ui:VisualElement name="timeline-fill" class="rv-timeline-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="timeline-marks" class="rv-timeline-marks" picking-mode="Ignore" />
+                <ui:VisualElement name="timeline-head" class="rv-timeline-head" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="scoreboard" class="rv-scoreboard-overlay" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

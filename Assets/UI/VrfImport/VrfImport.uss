@@ -1,0 +1,199 @@
+:root {
+    --vr-bg: #0F1923;
+    --vr-card: #172330;
+    --vr-card-2: #1E2C3A;
+    --vr-border: #2B3B4B;
+    --vr-text: #ECE8E1;
+    --vr-muted: #8A99A6;
+    --vr-accent: #FF4655;
+    --vr-accent-hover: #FF5E6B;
+    --vr-good: #3EDBB0;
+    --vr-warn: #F5C451;
+}
+
+.vr-root {
+    flex-grow: 1;
+    background-color: var(--vr-bg);
+    color: var(--vr-text);
+    padding: 20px 24px 12px 24px;
+    font-size: 13px;
+}
+
+.vr-row { flex-direction: row; align-items: center; }
+.vr-grow { flex-grow: 1; flex-shrink: 1; }
+.vr-muted { color: var(--vr-muted); }
+
+/* ---------------------------------------------------------------- header */
+.vr-header { flex-direction: row; align-items: flex-end; margin-bottom: 16px; flex-shrink: 0; }
+.vr-brand {
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: var(--vr-accent);
+    letter-spacing: 3px;
+    padding: 0;
+    margin: 0 16px 0 0;
+}
+.vr-subtitle { color: var(--vr-muted); padding: 0; margin: 0 0 4px 0; }
+
+/* ---------------------------------------------------------------- layout */
+/* Everything that fills leftover space uses flex-basis 0, so its size never depends on its content.
+   With the default basis (auto) the log's growing content inflated the body, and the header, footer and
+   progress card were shrunk to make room - the whole screen shifted while the log filled. */
+.vr-body { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
+.vr-card {
+    background-color: var(--vr-card);
+    border-width: 1px;
+    border-color: var(--vr-border);
+    border-radius: 6px;
+    padding: 14px 16px;
+}
+.vr-sidebar { width: 380px; flex-shrink: 0; margin-right: 16px; min-height: 0; }
+.vr-sidebar > * { flex-shrink: 0; }
+.vr-main { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; min-height: 0; }
+.vr-section-title {
+    color: var(--vr-muted);
+    font-size: 11px;
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+    margin: 10px 0 6px 0;
+    padding: 0;
+}
+.vr-section-row { margin-top: 6px; }
+.vr-section-row .vr-section-title { margin-top: 4px; }
+
+/* ---------------------------------------------------------------- fields */
+.vr-root .unity-base-text-field__input {
+    background-color: var(--vr-card-2);
+    border-color: var(--vr-border);
+    color: var(--vr-text);
+    border-radius: 4px;
+    padding: 4px 6px;
+}
+.vr-root .unity-base-field__label { color: var(--vr-muted); min-width: 110px; }
+.vr-root .unity-toggle__checkmark { background-color: var(--vr-card-2); border-color: var(--vr-border); }
+.vr-root .unity-base-slider__tracker { background-color: var(--vr-card-2); border-color: var(--vr-border); }
+.vr-root .unity-base-slider__dragger { background-color: var(--vr-accent); border-color: var(--vr-accent); }
+.vr-path-field { margin-left: 0; }
+.vr-option { margin: 3px 0; }
+.vr-file-info { margin: 4px 0 0 2px; padding: 0; min-height: 16px; white-space: normal; }
+.vr-folder-label { font-size: 11px; margin: 0 0 4px 0; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- buttons */
+.vr-root .vr-button {
+    background-color: var(--vr-card-2);
+    border-color: var(--vr-border);
+    border-width: 1px;
+    border-radius: 4px;
+    color: var(--vr-text);
+    padding: 5px 12px;
+    margin: 0 0 0 6px;
+    transition-duration: 0.1s;
+}
+.vr-root .vr-button:hover { background-color: #26384A; }
+.vr-root .vr-button:disabled { opacity: 0.4; }
+.vr-root .vr-button--small { padding: 2px 8px; font-size: 11px; }
+.vr-root .vr-button--primary {
+    background-color: var(--vr-accent);
+    border-color: var(--vr-accent);
+    color: #FFFFFF;
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    padding: 9px 12px;
+    margin-left: 0;
+}
+.vr-root .vr-button--primary:hover { background-color: var(--vr-accent-hover); }
+.vr-actions { margin-top: 14px; }
+.vr-actions .vr-button { padding-top: 9px; padding-bottom: 9px; }
+
+/* ---------------------------------------------------------------- file list */
+.vr-root .vr-sidebar > .vr-file-list {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-height: 120px;
+    background-color: var(--vr-bg);
+    border-width: 1px;
+    border-color: var(--vr-border);
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+.vr-file-item { padding: 3px 10px; justify-content: center; flex-grow: 1; }
+.vr-file-name { padding: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-file-meta { padding: 0; margin: 0; font-size: 11px; color: var(--vr-muted); }
+.vr-root .vr-file-list .unity-collection-view__item:hover { background-color: var(--vr-card-2); }
+.vr-root .vr-file-list .unity-collection-view__item--selected { background-color: #3A2029; }
+.vr-root .vr-file-list .unity-collection-view__item--selected .vr-file-name { color: var(--vr-accent); }
+.vr-empty { color: var(--vr-muted); padding: 10px; white-space: normal; }
+
+/* ---------------------------------------------------------------- progress */
+.vr-progress-card { margin-bottom: 16px; flex-shrink: 0; }
+.vr-progress-head { margin-bottom: 6px; }
+.vr-phase { font-size: 16px; -unity-font-style: bold; padding: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-percent { font-size: 16px; color: var(--vr-accent); -unity-font-style: bold; padding: 0; margin: 0; min-width: 56px; -unity-text-align: middle-right; }
+.vr-progress { margin: 0 0 12px 0; min-height: 10px; }
+.vr-root .vr-progress .unity-progress-bar__background {
+    background-color: var(--vr-bg);
+    border-color: var(--vr-border);
+    border-radius: 5px;
+    height: 10px;
+    min-height: 10px;
+}
+.vr-root .vr-progress .unity-progress-bar__progress { background-color: var(--vr-accent); border-radius: 5px; }
+.vr-root .vr-progress .unity-progress-bar__title-container { display: none; }
+.vr-root .vr-progress--done .unity-progress-bar__progress { background-color: var(--vr-good); }
+.vr-root .vr-progress--failed .unity-progress-bar__progress { background-color: var(--vr-warn); }
+
+.vr-stats { flex-direction: row; flex-wrap: wrap; }
+.vr-stat {
+    width: 20%;
+    min-width: 110px;
+    flex-grow: 1;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-color: var(--vr-card-2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin: 0 6px 6px 0;
+}
+.vr-stat-value { font-size: 17px; -unity-font-style: bold; padding: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vr-stat-label { font-size: 10px; color: var(--vr-muted); padding: 0; margin: 0; letter-spacing: 0.5px; }
+
+/* ---------------------------------------------------------------- log */
+.vr-log-card { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
+.vr-log-head { margin-bottom: 6px; flex-shrink: 0; }
+.vr-log-head .vr-section-title { margin: 0; }
+.vr-inline-toggle { margin: 0 6px; }
+.vr-root .vr-inline-toggle .unity-base-field__label { min-width: 0; margin-right: 4px; }
+.vr-log {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-height: 0;
+    background-color: var(--vr-bg);
+    border-width: 1px;
+    border-color: var(--vr-border);
+    border-radius: 4px;
+    padding: 4px 0;
+}
+.vr-log-line {
+    font-size: 12px;
+    padding: 1px 10px;
+    margin: 0;
+    white-space: normal;
+}
+.vr-log--info { color: var(--vr-text); }
+.vr-log--detail { color: var(--vr-muted); }
+.vr-log--progress { color: #6FA8DC; }
+.vr-log--note { color: #C9D3DA; }
+.vr-log--round { color: var(--vr-warn); -unity-font-style: bold; }
+.vr-log--kill { color: #F28B94; }
+.vr-log--success { color: var(--vr-good); -unity-font-style: bold; }
+.vr-log--warning { color: var(--vr-warn); }
+.vr-log--error { color: var(--vr-accent); -unity-font-style: bold; }
+
+/* ---------------------------------------------------------------- footer */
+.vr-footer { flex-direction: row; align-items: center; margin-top: 10px; flex-shrink: 0; }
+.vr-status { color: var(--vr-muted); padding: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-status--error { color: var(--vr-accent); }
+.vr-status--success { color: var(--vr-good); }
+.vr-root .vr-watch { padding: 6px 16px; margin-left: 8px; }
