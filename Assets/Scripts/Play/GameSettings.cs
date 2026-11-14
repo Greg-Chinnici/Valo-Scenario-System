@@ -35,6 +35,7 @@ namespace ValoReplay.Play
         public bool vSync = true;
         public int fpsLimit = 0;                   // 0 = unlimited
         public bool shadows = true;
+        public bool enhancedLighting = true;       // off: the scene's own plain sun and ambient
         public bool fullscreen = true;
 
         public static event Action Changed;

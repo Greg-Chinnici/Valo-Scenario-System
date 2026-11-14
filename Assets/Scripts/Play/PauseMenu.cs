@@ -31,7 +31,7 @@ namespace ValoReplay.Play
         private Label _info;
         private Slider _sensitivity, _chLength, _chThickness, _chGap, _speed;
         private SliderInt _fov;
-        private Toggle _invert, _chDot, _chSpread, _ammo, _shots, _aim, _roundAi, _aiMatrix, _mapTextures, _vsync, _shadows, _fullscreen;
+        private Toggle _invert, _chDot, _chSpread, _ammo, _shots, _aim, _roundAi, _aiMatrix, _mapTextures, _vsync, _shadows, _lighting, _fullscreen;
         private DropdownField _chColor, _fps;
 
         public bool IsOpen { get; private set; }
@@ -69,6 +69,7 @@ namespace ValoReplay.Play
             _vsync = Bind<Toggle, bool>(root, "set-vsync", v => { s.vSync = v; _fps.SetEnabled(!v); });
             _fps = Bind<DropdownField, string>(root, "set-fps", v => s.fpsLimit = FpsLimits[Mathf.Max(0, _fps.choices.IndexOf(v))]);
             _shadows = Bind<Toggle, bool>(root, "set-shadows", v => s.shadows = v);
+            _lighting = Bind<Toggle, bool>(root, "set-lighting", v => s.enhancedLighting = v);
             _fullscreen = Bind<Toggle, bool>(root, "set-fullscreen", v => s.fullscreen = v);
 
             _chColor.choices = Colors.Select(c => c.Name).ToList();
@@ -115,6 +116,7 @@ namespace ValoReplay.Play
             _fps.SetValueWithoutNotify(_fps.choices[fi < 0 ? 0 : fi]);
             _fps.SetEnabled(!s.vSync);
             _shadows.SetValueWithoutNotify(s.shadows);
+            _lighting.SetValueWithoutNotify(s.enhancedLighting);
             _fullscreen.SetValueWithoutNotify(s.fullscreen);
         }
 

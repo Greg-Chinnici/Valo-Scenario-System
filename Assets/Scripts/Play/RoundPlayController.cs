@@ -294,6 +294,7 @@ namespace ValoReplay.Play
             ghosts.ShowShots = s.showRecordedShots;
             ghosts.ShowAimLines = s.showGhostAim;
             ghosts.MapTextures = s.mapTextures;
+            ValoReplay.Maps.MapLighting.Ensure().Enhanced = s.enhancedLighting;
             if (!Paused) Time.timeScale = s.gameSpeed;
         }
 

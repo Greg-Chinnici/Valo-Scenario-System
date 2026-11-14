@@ -408,6 +408,7 @@ namespace ValoReplay.Replay
             _mapVisible = true;
             _texturedMaterials.Clear();
             if (!_mapTextures) ApplyMapTextures();
+            MapLighting.Ensure();
             Physics.SyncTransforms();
         }
 

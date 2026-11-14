@@ -106,6 +106,7 @@
                     <ui:Toggle name="set-vsync" label="VSync" class="rp-set" />
                     <ui:DropdownField name="set-fps" label="FPS limit (VSync off)" class="rp-set" />
                     <ui:Toggle name="set-shadows" label="Shadows" class="rp-set" />
+                    <ui:Toggle name="set-lighting" label="Enhanced lighting" class="rp-set" />
                     <ui:Toggle name="set-fullscreen" label="Fullscreen" class="rp-set" />
 
                     <ui:Button name="reset-button" text="RESET TO DEFAULTS" class="rp-menu-button rp-reset" />
