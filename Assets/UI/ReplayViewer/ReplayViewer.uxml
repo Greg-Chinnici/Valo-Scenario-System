@@ -71,6 +71,7 @@
                     <ui:Button name="tool-shots" text="SHOTS" class="rv-tool" tooltip="Shot tracers" />
                     <ui:Button name="tool-board" text="SCOREBOARD" class="rv-tool" tooltip="Keep the scoreboard open (hold Tab for a look)" />
                     <ui:Button name="tool-view" text="OVERVIEW" class="rv-tool" tooltip="Stop following and look at the whole map (Esc)" />
+                    <ui:Button name="tool-bookmark" text="BOOKMARK" class="rv-tool" tooltip="Save this moment and view; open it from the replay library's Bookmarks (K)" />
                     <ui:Button name="tool-help" text="?" class="rv-tool rv-tool--help" tooltip="Shortcuts (F1)" />
                 </ui:VisualElement>
             </ui:VisualElement>
@@ -103,6 +104,7 @@
                     <ui:Label text="WASD   move   ·   Q / E   rotate" class="rv-help-line" />
                     <ui:Label text="Click a player   follow   ·   Esc   stop following" class="rv-help-line" />
                     <ui:Label text="M   3D map / minimap   ·   N   name tags" class="rv-help-line" />
+                    <ui:Label text="K   bookmark this moment" class="rv-help-line" />
                 </ui:VisualElement>
                 <ui:VisualElement class="rv-help-col">
                     <ui:Label text="MODES" class="rv-help-group" />

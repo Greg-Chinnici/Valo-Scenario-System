@@ -28,6 +28,8 @@ namespace ValoReplay.Replay
         /// <summary>Where the viewer should resume (and its follow target) when coming back; -1 = start normally.</summary>
         public float ViewerResumeTime { get; set; } = -1f;
         public int ViewerResumeFollow { get; set; } = -1;
+        /// <summary>A bookmark being opened: the viewer HUD restores its view (intel, map, camera) once loaded.</summary>
+        public ReplayBookmark PendingView { get; set; }
 
         /// <summary>Hands a replay to the viewer scene and loads it.</summary>
         public static void Open(VrpReplay replay, string vrpPath)
@@ -38,7 +40,17 @@ namespace ValoReplay.Replay
             Instance.VrpPath = vrpPath;
             Instance.ViewerResumeTime = -1f;
             Instance.ViewerResumeFollow = -1;
+            Instance.PendingView = null;
             SceneManager.LoadScene(ViewerScene);
+        }
+
+        /// <summary>Opens the replay in the viewer at a bookmark, paused, with the bookmark's view.</summary>
+        public static void OpenAt(VrpReplay replay, string vrpPath, ReplayBookmark bookmark)
+        {
+            Open(replay, vrpPath);
+            Instance.ViewerResumeTime = Mathf.Clamp(bookmark.time, 0f, replay.Duration);
+            Instance.ViewerResumeFollow = bookmark.follow;
+            Instance.PendingView = bookmark;
         }
 
         /// <summary>

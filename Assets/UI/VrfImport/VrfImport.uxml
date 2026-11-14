@@ -10,6 +10,7 @@
                 <ui:Button name="browse-button" text="Change…" class="vr-button vr-button--small" />
                 <ui:Button name="refresh-button" text="Refresh" class="vr-button vr-button--small" />
             </ui:VisualElement>
+            <ui:Button name="bookmarks-button" text="BOOKMARKS" class="vr-button vr-bookmarks-button" tooltip="Saved moments: open a replay where you left a bookmark (K in the viewer)" />
         </ui:VisualElement>
 
         <ui:VisualElement class="vr-body">
@@ -53,6 +54,17 @@
         <ui:VisualElement class="vr-footer">
             <ui:Label name="status-label" class="vr-status vr-grow" />
             <ui:Button name="open-output-button" text="Show folder" class="vr-button vr-button--small" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="drawer-scrim" class="vr-scrim" />
+        <ui:VisualElement name="bookmark-drawer" class="vr-drawer">
+            <ui:VisualElement class="vr-row vr-drawer-head">
+                <ui:Label name="bookmark-count" text="BOOKMARKS" class="vr-section-title vr-grow" />
+                <ui:Button name="bookmarks-close" text="Close" class="vr-button vr-button--small" />
+            </ui:VisualElement>
+            <ui:Label text="Click to open the replay at that moment, with the same view. Bookmark a moment in the viewer with K." class="vr-drawer-hint" />
+            <ui:ScrollView name="bookmark-list" class="vr-drawer-list" />
+            <ui:Label name="bookmark-empty" text="No bookmarks yet. In the replay viewer, press K (or BOOKMARK) to save the moment you're looking at." class="vr-empty" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

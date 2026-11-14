@@ -111,6 +111,17 @@ namespace ValoReplay.Knowledge
         private readonly List<PlayerStatSample>[] _stats;
         /// <summary>Per round, team and enemy: alive at the round's end and guns known then (for the next round).</summary>
         private readonly Dictionary<int, (bool Alive, string[] Guns)> _carry = new Dictionary<int, (bool, string[])>();
+        private readonly HashSet<int> _finished = new HashSet<int>();     // rounds whose end-of-round intel is in _carry
+        private int _catchUpTo = -1;     // the round a jump is headed for while earlier rounds of its half are played
+
+        /// <summary>A jump to a round first plays the earlier rounds of its half (each round's survivors and their guns
+        /// carry into the next), so the blackboards come out as they would watching from the start. Off: a jump fills
+        /// last round's intel from the kill feed instead, which is quicker.</summary>
+        public bool PlayEarlierRounds { get; set; }
+        /// <summary>Playing earlier rounds on the way to a jump: <see cref="Round"/> and <see cref="Time"/> are theirs.</summary>
+        public bool CatchingUp => _catchUpTo >= 0;
+        /// <summary>While <see cref="CatchingUp"/>: the round the jump is headed for, else -1.</summary>
+        public int CatchUpTarget => _catchUpTo;
         private static readonly string[] KitSlots = { "C", "Q", "E" };
 
         public KnowledgeSim(VrpReplay replay, KnowledgeSettings settings, ISightTest sight)
@@ -260,14 +271,30 @@ namespace ValoReplay.Knowledge
         {
             if (Replay.Rounds.Count == 0) return true;
             int round = Live != null ? Live.Round : Replay.RoundAt(time);
-            if (Live == null && (round != Round || time < Time - 1e-4f))
+            if (_catchUpTo >= 0 && (Live != null || round != _catchUpTo)) _catchUpTo = -1;   // jumped elsewhere meanwhile
+            if (Live == null && _catchUpTo < 0 && (round != Round || time < Time - 1e-4f))
             {
                 // moving on to the next round: finish this one so its survivors and their guns carry over
                 if (Round >= 0 && round == Round + 1 && time >= Time) FinishRound();
-                Reset(round);
+                int first = PlayEarlierRounds ? FirstUnfinished(round) : round;
+                if (first < round) _catchUpTo = round;
+                Reset(first);
             }
             float rate = Mathf.Max(1f, Settings.sensorRate);
             int steps = 0;
+            while (_catchUpTo >= 0)
+            {
+                float end = Replay.Rounds[Round + 1].StartTime - 1e-3f;
+                while (_tick / rate <= end)
+                {
+                    if (steps++ >= maxSteps) return false;
+                    Step(_tick / rate);
+                    _tick++;
+                }
+                FinishRound();
+                if (Round + 1 >= _catchUpTo) { Reset(_catchUpTo); _catchUpTo = -1; }
+                else Reset(Round + 1);
+            }
             while (_tick / rate <= time + 1e-5f)
             {
                 if (steps++ >= maxSteps) return false;
@@ -812,6 +839,15 @@ namespace ValoReplay.Knowledge
 
         private static int CarryKey(int round, int team, int player) => round * 1000 + team * 100 + player;
 
+        /// <summary>The earliest round to play from so <paramref name="round"/> starts with what the team carried in: back
+        /// through the rounds whose intel is missing, to the half's first round (nothing carries over a side switch).</summary>
+        private int FirstUnfinished(int round)
+        {
+            int first = round;
+            while (first > 0 && !SidesSwitched(first) && !_finished.Contains(first - 1)) first--;
+            return first;
+        }
+
         private void FinishRound()
         {
             float end = Replay.Rounds[Round + 1].StartTime - 1e-3f;
@@ -824,6 +860,7 @@ namespace ValoReplay.Knowledge
             foreach (var bb in Teams)
                 foreach (var ei in bb.EachEnemy())
                     _carry[CarryKey(Round, bb.Team, ei.Player)] = (!ei.Dead, ei.Guns.ToArray());
+            _finished.Add(Round);
         }
 
         // ------------------------------------------------------------------------------------------ area beliefs

@@ -31,7 +31,8 @@ namespace ValoReplay.Replay
         // modes (top left) and tools (bottom right)
         private enum Mode { Watch, Intel, Command }
         private Button _modeWatch, _modeIntel, _modeCommand, _modePlay;
-        private Button _toolMap, _toolTags, _toolAim, _toolShots, _toolBoard, _toolView;
+        private Button _toolMap, _toolTags, _toolAim, _toolShots, _toolBoard, _toolView, _toolBookmark;
+        private float _bookmarkFlash = -1f;
         private VisualElement _modeOptions, _helpPanel;
         private Label _modeHint;
         private BlackboardView _intel;
@@ -192,6 +193,7 @@ namespace ValoReplay.Replay
             _toolShots = _root.Q<Button>("tool-shots");
             _toolBoard = _root.Q<Button>("tool-board");
             _toolView = _root.Q<Button>("tool-view");
+            _toolBookmark = _root.Q<Button>("tool-bookmark");
             _helpPanel = _root.Q("help-panel");
 
             _modeWatch.clicked += () => SetMode(Mode.Watch);
@@ -205,6 +207,7 @@ namespace ValoReplay.Replay
             _toolShots.clicked += () => viewer.ShowShots = !viewer.ShowShots;
             _toolBoard.clicked += () => _boardPinned = !_boardPinned;
             _toolView.clicked += Overview;
+            _toolBookmark.clicked += AddBookmark;
             _root.Q<Button>("tool-help").clicked += ToggleHelp;
             _root.Q<Button>("help-close").clicked += ToggleHelp;
         }
@@ -272,6 +275,49 @@ namespace ValoReplay.Replay
             _toolShots.EnableInClassList("rv-tool--on", viewer.ShowShots);
             _toolBoard.EnableInClassList("rv-tool--on", _boardPinned);
             _nameTags.style.display = _showTags ? DisplayStyle.Flex : DisplayStyle.None;
+            bool saved = UnityEngine.Time.unscaledTime < _bookmarkFlash;
+            _toolBookmark.text = saved ? "SAVED" : "BOOKMARK";
+            _toolBookmark.EnableInClassList("rv-tool--on", saved);
+        }
+
+        // ------------------------------------------------------------------------------------------ bookmarks
+        /// <summary>Saves this moment and the view (followed player, intel team, map, camera); listed on the import screen.</summary>
+        private void AddBookmark()
+        {
+            if (Replay == null || string.IsNullOrEmpty(viewer.ReplayPath)) return;
+            var b = ReplayBookmarks.At(Replay, viewer.ReplayPath, viewer.Time, viewer.FollowPlayer);
+            b.intelTeam = _intel != null ? _intel.ViewTeam : -1;
+            b.hideEnemies = _intel != null && _intel.HideTruth;
+            b.builtMap = viewer.ShowBuiltMap;
+            if (_cameraController != null)
+            {
+                var v = _cameraController.View;
+                b.hasCamera = true;
+                b.cameraPivot = v.Pivot;
+                b.cameraDistance = v.Distance;
+                b.cameraYaw = v.Yaw;
+                b.cameraPitch = v.Pitch;
+            }
+            ReplayBookmarks.Add(b);
+            _bookmarkFlash = UnityEngine.Time.unscaledTime + 1.5f;
+        }
+
+        /// <summary>Opening a bookmark: the viewer is already at its time and following its player (ReplaySession); this
+        /// puts back the rest of the view. The intel team's blackboard then catches up to the moment by itself.</summary>
+        private void RestorePendingView()
+        {
+            var session = ReplaySession.Instance;
+            var b = session != null && session.Replay == Replay ? session.PendingView : null;
+            if (b == null) return;
+            session.PendingView = null;
+            if (viewer.HasBuiltMap) viewer.ShowBuiltMap = b.builtMap;
+            if (_intel != null && b.intelTeam >= 0)
+            {
+                _intel.SetTeam(b.intelTeam);
+                if (_intel.HideTruth != b.hideEnemies) _intel.ToggleTruth();
+            }
+            if (_cameraController != null && b.hasCamera)
+                _cameraController.View = (b.cameraPivot, b.cameraDistance, b.cameraYaw, b.cameraPitch);
         }
 
         private static Label MakeLabel(string text, string cls)
@@ -291,6 +337,7 @@ namespace ValoReplay.Replay
         private void Update()
         {
             if (Replay == null) return;
+            RestorePendingView();
             HandleKeys();
             UpdateTopBar();
             UpdateModesAndTools();
@@ -342,6 +389,7 @@ namespace ValoReplay.Replay
             if (kb.enterKey.wasPressedThisFrame && viewer.FollowPlayer >= 0) PlayAs(viewer.FollowPlayer);
             if (kb.mKey.wasPressedThisFrame && viewer.HasBuiltMap) viewer.ShowBuiltMap = !viewer.ShowBuiltMap;
             if (kb.nKey.wasPressedThisFrame) _showTags = !_showTags;
+            if (kb.kKey.wasPressedThisFrame) AddBookmark();
             if (kb.f1Key.wasPressedThisFrame) ToggleHelp();
             if (kb.escapeKey.wasPressedThisFrame)
             {

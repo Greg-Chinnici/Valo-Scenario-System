@@ -59,6 +59,9 @@ namespace ValoReplay.Replay
         private Color[] _heatColors = new Color[0];
         private float[] _heatValues = new float[0];
         private float _mapProgress;
+        private const float LongWaitDelay = 0.15f;     // a wait shorter than this never flashes the loading screen
+        private float _longWaitSince = -1f;
+        private bool _showingLoading;
 
         private Transform _overlay;
         private Pool<LineRenderer> _rings, _lines, _cones;
@@ -101,6 +104,7 @@ namespace ValoReplay.Replay
             }
             if (_overlay != null) Destroy(_overlay.gameObject);
             _overlay = null;
+            if (_showingLoading) { _showingLoading = false; LoadingScreen.Hide(); }
         }
 
         private void OnValidate()
@@ -182,7 +186,7 @@ namespace ValoReplay.Replay
         private void CreateSim()
         {
             ISightTest sight = viewer.MapGeometryReady ? new MapSightTest(viewer.IsMapCollider) : new NoOcclusion();
-            Sim = new KnowledgeSim(Replay, settings, sight);
+            Sim = new KnowledgeSim(Replay, settings, sight) { PlayEarlierRounds = true };
             BuildRows();
         }
 
@@ -234,13 +238,14 @@ namespace ValoReplay.Replay
 
         private void LateUpdate()
         {
+            UpdateLoadingScreen();
             if (ViewTeam < 0 || Replay == null)
             {
                 HideOverlay();
                 return;
             }
             UpdateStatus();
-            if (Sim == null || Sim.Round < 0)
+            if (Sim == null || Sim.Round < 0 || Sim.CatchingUp)     // still playing earlier rounds: nothing to show yet
             {
                 HideOverlay();
                 return;
@@ -249,6 +254,30 @@ namespace ValoReplay.Replay
             var bb = Sim.Teams[ViewTeam];
             DrawOverlay(bb, t);
             UpdatePanel(bb, t);
+        }
+
+        /// <summary>Long waits (loading the map's geometry, replaying earlier rounds after a jump) cover the screen with
+        /// the loading screen; short catch-ups while scrubbing only show the status line.</summary>
+        private void UpdateLoadingScreen()
+        {
+            bool loadingMap = _loadingMap && ViewTeam >= 0;
+            bool history = Sim != null && Sim.CatchingUp && ViewTeam >= 0;
+            if (!loadingMap && !history)
+            {
+                _longWaitSince = -1f;
+                if (_showingLoading) { _showingLoading = false; LoadingScreen.Hide(); }
+                return;
+            }
+            if (_longWaitSince < 0f) _longWaitSince = Time.unscaledTime;
+            if (!_showingLoading && Time.unscaledTime - _longWaitSince < LongWaitDelay) return;
+            string status = loadingMap ? $"Loading map geometry for sight lines  {_mapProgress * 100f:0}%"
+                : $"Replaying round {Sim.Round + 1} of {Sim.CatchUpTarget + 1}, so last round's intel carries over";
+            if (!_showingLoading)
+            {
+                _showingLoading = true;
+                LoadingScreen.Show(GetComponent<UIDocument>().panelSettings, $"{Ui.TeamName(ViewTeam)} TEAM INTEL", status);
+            }
+            else LoadingScreen.SetStatus(status);
         }
 
         private void UpdateStatus()

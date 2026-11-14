@@ -60,7 +60,7 @@ namespace ValoReplay.Replay
             var s = _overlay.style;
             s.position = Position.Absolute;
             s.left = s.top = s.right = s.bottom = 0;
-            s.backgroundColor = (Color)new Color32(0x0F, 0x19, 0x23, 0xF5);
+            s.backgroundColor = (Color)new Color32(0x0F, 0x19, 0x23, 0xFF);     // solid navy: nothing half-built shows through
             s.alignItems = Align.Center;
             s.justifyContent = Justify.Center;
 

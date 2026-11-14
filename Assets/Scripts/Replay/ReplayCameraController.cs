@@ -53,6 +53,20 @@ namespace ValoReplay.Replay
             ApplyTransform();
         }
 
+        /// <summary>The orbit: pivot, distance, yaw and pitch (for bookmarks).</summary>
+        public (Vector3 Pivot, float Distance, float Yaw, float Pitch) View
+        {
+            get => (_pivot, _distance, _yaw, _pitch);
+            set
+            {
+                _pivot = value.Pivot;
+                _distance = Mathf.Clamp(value.Distance, minDistance, maxDistance);
+                _yaw = value.Yaw;
+                _pitch = Mathf.Clamp(value.Pitch, 5f, 89f);
+                ApplyTransform();
+            }
+        }
+
         private void LateUpdate()
         {
             var mouse = Mouse.current;

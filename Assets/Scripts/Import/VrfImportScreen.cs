@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using ValorantReplay.Playback;
 using ValoReplay.Replay;
@@ -15,7 +16,8 @@ namespace ValoReplay.Import
     /// UI Toolkit start screen: the replay library. Lists the .vrp replays in a folder (map, score, date, length; filter by
     /// map), shows the selected match (stats, who won each round and how, both rosters with K/D/A and ACS) and opens it in
     /// the replay viewer. Replays are converted from .vrf outside the app (the private converter publishes anonymized .vrp
-    /// files into this repo's data/replays). Layout: Assets/UI/VrfImport/VrfImport.uxml.
+    /// files into this repo's data/replays). The bookmarks drawer lists moments saved in the viewer (K) and opens the
+    /// replay there. Layout: Assets/UI/VrfImport/VrfImport.uxml.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class VrfImportScreen : MonoBehaviour
@@ -61,6 +63,11 @@ namespace ValoReplay.Import
         private DropdownField _mapFilter;
         private ListView _fileList;
         private VisualElement _roundStrip, _team0, _team1;
+        private Button _bookmarksButton;
+        private VisualElement _drawer, _scrim;
+        private ScrollView _bookmarkList;
+        private Label _bookmarkCount, _bookmarkEmpty;
+        private string _renaming;     // id of the bookmark whose label is being edited
 
         private readonly List<FileInfo> _files = new List<FileInfo>();
         private readonly List<FileInfo> _visible = new List<FileInfo>();
@@ -99,6 +106,12 @@ namespace ValoReplay.Import
             _roundStrip = root.Q("round-strip");
             _team0 = root.Q("team0");
             _team1 = root.Q("team1");
+            _bookmarksButton = root.Q<Button>("bookmarks-button");
+            _drawer = root.Q("bookmark-drawer");
+            _scrim = root.Q("drawer-scrim");
+            _bookmarkList = root.Q<ScrollView>("bookmark-list");
+            _bookmarkCount = root.Q<Label>("bookmark-count");
+            _bookmarkEmpty = root.Q<Label>("bookmark-empty");
 
             _folderField.isDelayed = true;
             _browseButton.SetEnabled(FileDialog.IsSupported);
@@ -112,6 +125,11 @@ namespace ValoReplay.Import
             _refreshButton.clicked += () => ListFolder(_folder, force: true);
             _watchButton.clicked += Watch;
             _showFolderButton.clicked += ShowFolder;
+            _bookmarksButton.clicked += () => OpenDrawer(!DrawerOpen);
+            root.Q<Button>("bookmarks-close").clicked += () => OpenDrawer(false);
+            _scrim.RegisterCallback<ClickEvent>(_ => OpenDrawer(false));
+            ReplayBookmarks.Changed += RefreshBookmarks;
+            RefreshBookmarks();
 
             if (ReplaySession.Instance != null && ReplaySession.Instance.Replay != null)
             {
@@ -130,12 +148,14 @@ namespace ValoReplay.Import
         private void OnDisable()
         {
             _loadGeneration++;      // summaries still loading are dropped
+            ReplayBookmarks.Changed -= RefreshBookmarks;
             if (_folder != null) PlayerPrefs.SetString(PrefFolder, _folder);
             PlayerPrefs.Save();
         }
 
         private void Update()
         {
+            if (DrawerOpen && _renaming == null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) OpenDrawer(false);
             bool any = false;
             while (_arrived.TryDequeue(out var s))
             {
@@ -394,6 +414,114 @@ namespace ValoReplay.Import
             }
             SetStatus("Opening replay viewer…", null);
             ReplaySession.Open(LastReplay, LastPath);
+        }
+
+        // ------------------------------------------------------------------ bookmarks drawer
+        private bool DrawerOpen => _drawer.ClassListContains("vr-drawer--open");
+
+        private void OpenDrawer(bool open)
+        {
+            if (open) RefreshBookmarks();
+            _drawer.EnableInClassList("vr-drawer--open", open);
+            _scrim.EnableInClassList("vr-scrim--open", open);
+            _bookmarksButton.EnableInClassList("vr-bookmarks-button--open", open);
+        }
+
+        private IEnumerable<string> BookmarkFolders() => new[] { _folder }.Concat(DefaultFolders());
+
+        private void RefreshBookmarks()
+        {
+            var all = ReplayBookmarks.All;
+            _bookmarkList.Clear();
+            _bookmarksButton.text = all.Count > 0 ? $"BOOKMARKS  {all.Count}" : "BOOKMARKS";
+            _bookmarkCount.text = all.Count == 1 ? "1 BOOKMARK" : $"{all.Count} BOOKMARKS";
+            Ui.Show(_bookmarkEmpty, all.Count == 0);
+            foreach (var b in all) _bookmarkList.Add(BookmarkRow(b));
+        }
+
+        private VisualElement BookmarkRow(ReplayBookmark b)
+        {
+            string path = ReplayBookmarks.Resolve(b, BookmarkFolders());
+            var row = Ui.Box("vr-bookmark");
+            if (path == null) row.AddToClassList("vr-bookmark--missing");
+            var text = Ui.Box("vr-bookmark-text");
+            var top = Ui.Box("vr-bookmark-top");
+            top.Add(Ui.Label(b.map.Length > 0 ? b.map : "?", "vr-bookmark-map"));
+            top.Add(Ui.Label(b.Moment, "vr-bookmark-moment"));
+            text.Add(top);
+            if (_renaming == b.id)
+            {
+                var field = new TextField { value = b.label ?? "", isDelayed = true };
+                field.AddToClassList("vr-bookmark-rename");
+                field.RegisterValueChangedCallback(e => FinishRename(b.id, e.newValue));
+                field.RegisterCallback<FocusOutEvent>(_ => FinishRename(b.id, field.value));
+                text.Add(field);
+                field.schedule.Execute(() => { field.Focus(); field.SelectAll(); });
+            }
+            else text.Add(Ui.Label(b.label ?? "", "vr-bookmark-label"));
+            var view = new List<string>();
+            if (b.intelTeam >= 0) view.Add($"intel {Ui.TeamName(b.intelTeam).ToLowerInvariant()}{(b.hideEnemies ? ", enemies hidden" : "")}");
+            if (!b.builtMap) view.Add("minimap");
+            string where = path == null ? "replay file not found" : b.FileName;
+            text.Add(Ui.Label($"{where}  ·  saved {b.Created.ToLocalTime():yyyy-MM-dd HH:mm}{(view.Count > 0 ? "  ·  " + string.Join(", ", view) : "")}", "vr-bookmark-meta"));
+            row.Add(text);
+
+            var rename = new Button(() => { _renaming = b.id; RefreshBookmarks(); }) { text = "Rename", tooltip = "Rename this bookmark" };
+            rename.AddToClassList("vr-button");
+            rename.AddToClassList("vr-button--small");
+            row.Add(rename);
+            var delete = new Button(() => ReplayBookmarks.Remove(b.id)) { text = "×", tooltip = "Delete this bookmark" };
+            delete.AddToClassList("vr-button");
+            delete.AddToClassList("vr-bookmark-delete");
+            row.Add(delete);
+
+            row.tooltip = path == null ? $"{b.FileName} is not in {b.vrpPath ?? "?"} or the replay folders" : $"Open {b.FileName} at {b.Moment}";
+            row.RegisterCallback<ClickEvent>(e =>
+            {
+                if (Within<Button>(e.target, row) || Within<TextField>(e.target, row)) return;
+                OpenBookmark(b);
+            });
+            return row;
+        }
+
+        private void FinishRename(string id, string label)
+        {
+            if (_renaming != id) return;
+            _renaming = null;
+            label = (label ?? "").Trim();
+            if (label.Length > 0) ReplayBookmarks.Rename(id, label);     // refreshes through Changed
+            _drawer.schedule.Execute(RefreshBookmarks);
+        }
+
+        private static bool Within<T>(IEventHandler target, VisualElement stop) where T : VisualElement
+        {
+            for (var e = target as VisualElement; e != null && e != stop; e = e.parent)
+                if (e is T) return true;
+            return false;
+        }
+
+        /// <summary>Loads the bookmark's replay and opens the viewer there (paused, with the bookmark's view).</summary>
+        private void OpenBookmark(ReplayBookmark b)
+        {
+            string path = ReplayBookmarks.Resolve(b, BookmarkFolders());
+            if (path == null)
+            {
+                SetStatus($"Can't find {b.FileName}: it's not at its saved path or in the replay folders.", "vr-status--error");
+                return;
+            }
+            try
+            {
+                LastReplay = VrpReplay.Load(path);
+                LastPath = path;
+            }
+            catch (Exception e)
+            {
+                SetStatus($"Cannot open {Path.GetFileName(path)}: {e.Message}", "vr-status--error");
+                return;
+            }
+            PlayerPrefs.SetString(PrefFile, path);
+            SetStatus($"Opening {b.map} at {b.Moment}…", null);
+            ReplaySession.OpenAt(LastReplay, LastPath, b);
         }
 
         private void ShowFolder()
