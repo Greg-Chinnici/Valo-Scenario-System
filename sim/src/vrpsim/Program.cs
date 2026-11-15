@@ -22,6 +22,11 @@
 //       flick, exposure and walls: recorded rounds against simulated ones measured the same way (Duels.cs). --players:
 //       how exposure and walls correlate with skill per recorded player-match.
 //   calibrate, bots and duels take --set <SimOptions field>=<value> (repeatable), e.g. --set PreAimReaction=0.6, to try constants.
+//   vrpsim plans <a.vrp> [more.vrp ...] [-n 2] [--attack default,rush,slow,fake,latecall] [--seed 0] [--threads 0]
+//       every recorded round from the barrier drop, all AI with fitted profiles, played with each attack plan on the same
+//       seeds: win, plant and rotation rates per plan, and each plan's win rate against Default's round for round.
+//   run, calibrate, bots, duels and plans take --set <SimOptions field>=<value> (repeatable); run and calibrate take
+//   --attack <plan or mix>, e.g. --attack fake or --attack default=3,fake=1,latecall=1 (Plans.AttackMix).
 //   vrpsim validate <folder|a.vrp> [...]
 //       checks replays meant for publishing: each loads with this .vrp layout, is anonymized (pseudonymous ids, generated
 //       or no names, no crosshair names, no recording time, no user tags), is named <Map>-<match id>.vrp, and plays a
@@ -49,6 +54,7 @@ static class Program
                 "validate" => ValidateCmd(args.Skip(1).ToList()),
                 "bots" => BotsCmd(args.Skip(1).ToList()),
                 "duels" => DuelsCmd(args.Skip(1).ToList()),
+                "plans" => PlansCmd(args.Skip(1).ToList()),
                 _ => Usage(),
             };
         }
@@ -69,6 +75,7 @@ static class Program
         Console.Error.WriteLine("vrpsim validate <folder|a.vrp> [...]");
         Console.Error.WriteLine("vrpsim duels <a.vrp> [more.vrp ...] [-n 2] [--players] [--threads 0]");
         Console.Error.WriteLine("vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]");
+        Console.Error.WriteLine("vrpsim plans <a.vrp> [more.vrp ...] [-n 2] [--attack default,rush,slow,fake,latecall] [--seed 0] [--threads 0]");
         return 2;
     }
 
@@ -167,6 +174,17 @@ static class Program
         return o;
     }
 
+    /// <summary>Applies --attack <plan or mix> (Plans.AttackMix) to a SimOptions (a new one when null and it is given).</summary>
+    static SimOptions Attacks(List<string> a, SimOptions o)
+    {
+        string spec = Take(a, "--attack");
+        if (spec == null) return o;
+        o ??= new SimOptions();
+        o.AttackPlans = Plans.AttackMix(spec);
+        Console.WriteLine("attack plans: " + string.Join(", ", o.AttackPlans.Select(p => $"{p.Plan.Name} {p.Weight:0.##}")));
+        return o;
+    }
+
     static string MapName(VrpReplay r) => MapCatalog.DisplayName(r.Map);
 
     // ---------------------------------------------------------------- map
@@ -247,6 +265,7 @@ static class Program
         string ci = Take(a, "--ci");
         string takeover = Take(a, "--takeover");
         bool ai = Flag(a, "--ai");
+        var options = Attacks(a, Sets(a, null));
         var more = new List<string>();
         for (string m; (m = Take(a, "--map")) != null;) more.Add(m);
         if (a.Count != 1) throw new ArgumentException("one match .vrp expected");
@@ -265,7 +284,7 @@ static class Program
 
         RoundSim Make(int i)
         {
-            var sim = RoundSim.FromReplay(r, map, start, p => fitted[p].Profile, seed: seed + i, followRecording: !ai);
+            var sim = RoundSim.FromReplay(r, map, start, p => fitted[p].Profile, options, seed: seed + i, followRecording: !ai);
             if (takeover != null) sim.TakeControl(int.Parse(takeover, CultureInfo.InvariantCulture));
             return sim;
         }
@@ -434,6 +453,60 @@ static class Program
             $"{t.Kills / rounds,5:0.00} {t.Deaths / rounds,5:0.00} {t.Kills / (float)Math.Max(1, t.Deaths),5:0.00} {t.FirstKills / rounds,5:P0} {t.TradedRate,6:P0} {t.Accuracy,5:P0} {t.HeadHitRate,6:P0} {t.ReactionMean,5:0.00}");
     }
 
+    // ---------------------------------------------------------------- plans
+
+    static int PlansCmd(List<string> a)
+    {
+        int n = int.Parse(Take(a, "-n") ?? "2", CultureInfo.InvariantCulture);
+        int seed = int.Parse(Take(a, "--seed") ?? "0", CultureInfo.InvariantCulture);
+        int threads = int.Parse(Take(a, "--threads") ?? "0", CultureInfo.InvariantCulture);
+        var plans = (Take(a, "--attack") ?? "default,rush,slow,fake,latecall").Split(',').Select(Plans.Attack).ToList();
+        if (!plans.Any(p => p.GetType() == typeof(DefaultAttack))) plans.Insert(0, new DefaultAttack());
+        var options = Sets(a, null);
+        var files = a.SelectMany<string, string>(p => Directory.Exists(p) ? Directory.GetFiles(p, "*.vrp").OrderBy(f => f, StringComparer.Ordinal) : new[] { p }).ToList();
+        if (files.Count == 0) throw new ArgumentException("at least one .vrp expected");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        var replays = files.Select(VrpReplay.Load).ToList();
+        var maps = replays.GroupBy(r => r.Map).ToDictionary(g => g.Key, g => SimMap.FromReplays(g));
+        var starts = new List<(VrpReplay Replay, SimMap Map, float Time, Func<int, Profile> Profiles)>();
+        foreach (var r in replays)
+        {
+            if (r.Players.Any(p => p.Team > 1)) continue;
+            var fitted = ProfileFitter.Fit(r, map: maps[r.Map]);
+            foreach (var rd in r.Rounds)
+                if (rd.BarrierTime >= 0f && rd.AttackingTeam <= 1 && rd.BarrierTime < rd.EndTime) starts.Add((r, maps[r.Map], rd.BarrierTime, p => fitted[p].Profile));
+        }
+        int total = starts.Count * n;
+        Console.WriteLine($"{files.Count} replays, {maps.Count} maps, {starts.Count} rounds from the barrier drop x {n} runs = {total:N0} simulated rounds per plan " +
+            "(all AI, fitted profiles, the same seeds for every plan)");
+
+        var results = plans.Select(plan => SimBatch.RunAll(i =>
+        {
+            var s = starts[i / n];
+            return RoundSim.FromReplay(s.Replay, s.Map, s.Time, s.Profiles, options, SimRandom.RunSeed(seed, i % n, i / n), followRecording: false, attack: plan);
+        }, 0, total, threads)).ToList();
+        var baseline = results[plans.FindIndex(p => p.GetType() == typeof(DefaultAttack))];
+
+        Console.WriteLine();
+        Console.WriteLine($"  {"plan",-10} {"atk win",7} {"+-",4} {"vs Default",10} {"+-",4} {"plant",5} {"len",5} {"def rot",7} {"atk rot",7}");
+        for (int k = 0; k < plans.Count; k++)
+        {
+            var rs = results[k];
+            int wins = rs.Count(r => r.AttackersWon);
+            // round for round against Default on the same seed (common random numbers): the paired difference's 95% interval
+            var diff = rs.Select((r, i) => (r.AttackersWon ? 1.0 : 0.0) - (baseline[i].AttackersWon ? 1.0 : 0.0)).ToList();
+            double mean = diff.Average(), sd = Math.Sqrt(diff.Sum(d => (d - mean) * (d - mean)) / Math.Max(1, diff.Count - 1));
+            double half = 1.96 * sd / Math.Sqrt(diff.Count);
+            Console.WriteLine($"  {plans[k].Name,-10} {wins / (float)total,7:P0} {BatchResult.WilsonHalfWidth(wins, total),4:P0} {mean,10:+0.0%;-0.0%;0.0%} {half,4:P0} " +
+                $"{rs.Count(r => r.Planted) / (float)total,5:P0} {rs.Average(r => r.Duration),4:0}s {rs.Count(r => r.DefenseRotations > 0) / (float)total,7:P0} {rs.Count(r => r.AttackRotations > 0) / (float)total,7:P0}");
+        }
+        Console.WriteLine("  (vs Default: change in attacker win rate, round for round on the same seeds; def / atk rot: rounds in which defenders / attackers rotated)");
+        Console.WriteLine();
+        Console.WriteLine($"{clock.Elapsed.TotalSeconds:0} s");
+        return 0;
+    }
+
     // ---------------------------------------------------------------- calibrate
 
     static int CalibrateCmd(List<string> a)
@@ -464,7 +537,7 @@ static class Program
         }
         o.Learned = ParseLearned(Take(a, "--learned"));
         (o.Sim, o.Transfer) = Perception(Take(a, "--perception"));
-        o.Sim = Sets(a, o.Sim);
+        o.Sim = Attacks(a, Sets(a, o.Sim));
         if (a.Count == 0) throw new ArgumentException("at least one .vrp expected");
 
         var replays = a.Select(VrpReplay.Load).ToList();

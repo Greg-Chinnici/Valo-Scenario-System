@@ -57,8 +57,8 @@ internal static class TestWorld
         return l;
     }
 
-    public static RoundSim Round(Func<int, Profile> attackers, Func<int, Profile> defenders, int seed, AttackPlan plan = AttackPlan.Default) =>
-        new RoundSim(Map, Teams(attackers, defenders), new RoundSetup { Plan = plan }, seed: seed);
+    public static RoundSim Round(Func<int, Profile> attackers, Func<int, Profile> defenders, int seed, AttackPlan plan = null) =>
+        new RoundSim(Map, Teams(attackers, defenders), new RoundSetup { Attack = plan }, seed: seed);
 
     /// <summary>A Unity-space replay at 20 Hz in which each player stands still at the given cell, plus the given kills.
     /// Victims are dead from their kill on. One round from 0 to duration, team 0 attacking.</summary>

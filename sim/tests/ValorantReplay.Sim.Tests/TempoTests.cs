@@ -43,9 +43,9 @@ public class TempoTests
         for (int i = 0; i < 5; i++) m.PlantTimes.Add(40f);
         Assert.Equal(40f - TempoModel.ExecuteLead, m.DrawExecute(new Random(1)));
         var sim = new RoundSim(TestWorld.Map.WithLearned(null, m), TestWorld.Teams(_ => Profile.Default, _ => Profile.Default));
-        Assert.Equal(sim.Options.RoundTime - (40f - TempoModel.ExecuteLead), sim.Director(0).ExecuteAt, 3);
-        var rush = new RoundSim(TestWorld.Map.WithLearned(null, m), TestWorld.Teams(_ => Profile.Default, _ => Profile.Default), new RoundSetup { Plan = AttackPlan.Rush });
-        Assert.True(float.IsPositiveInfinity(rush.Director(0).ExecuteAt));   // a chosen plan keeps its own timing
+        Assert.Equal(sim.Options.RoundTime - (40f - TempoModel.ExecuteLead), sim.Director(0).Attack.ExecuteAt, 3);
+        var rush = new RoundSim(TestWorld.Map.WithLearned(null, m), TestWorld.Teams(_ => Profile.Default, _ => Profile.Default), new RoundSetup { Attack = new RushAttack() });
+        Assert.True(float.IsPositiveInfinity(rush.Director(0).Attack.ExecuteAt));   // a chosen plan keeps its own timing
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class TempoTests
     public void Urgency_PassiveAttackersStillGoIn()
     {
         int TimeOuts(SimOptions o) => SimBatch.Run(i => new RoundSim(TestWorld.Map, TestWorld.Teams(_ => new Profile(0.5f, 0f, 0.5f), _ => Profile.Default),
-            new RoundSetup { Remaining = 35f, Plan = AttackPlan.Slow }, o, i), 200, threads: 0).Reasons.GetValueOrDefault(RoundEndReason.TimeExpired);
+            new RoundSetup { Remaining = 35f, Attack = new SlowAttack() }, o, i), 200, threads: 0).Reasons.GetValueOrDefault(RoundEndReason.TimeExpired);
         int urgent = TimeOuts(new SimOptions()), calm = TimeOuts(new SimOptions { UrgencyMargin = -1000f });
         Assert.True(urgent < calm, $"time-outs with urgency {urgent}, without {calm}");
     }

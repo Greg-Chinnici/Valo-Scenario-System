@@ -46,7 +46,7 @@ public class HoldTests
             new AgentSetup { Team = 1, Position = TestWorld.Cell(36, 10), Yaw = -90f, Name = "defA" },
             new AgentSetup { Team = 1, Position = TestWorld.Cell(36, 11), Yaw = -90f, Name = "defB" },
         };
-        var sim = new RoundSim(map, setup, new RoundSetup { Plan = AttackPlan.Slow }, new SimOptions { GlanceRate = 0f }, seed: 1) { SightTest = (_, _) => false };
+        var sim = new RoundSim(map, setup, new RoundSetup { Attack = new SlowAttack() }, new SimOptions { GlanceRate = 0f }, seed: 1) { SightTest = (_, _) => false };
         for (int i = 0; i < 300; i++) sim.Step();
         var a = sim.Agents[1];
         Assert.Equal("A", a.AssignedSite);

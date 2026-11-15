@@ -9,7 +9,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\Assets\ThirdParty\ValorantReplay.Sim\*.cs" Link="%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Assets\ThirdParty\ValorantReplay.Sim\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
     <ProjectReference Include="..\ValorantReplay.Playback\ValorantReplay.Playback.csproj" />
   </ItemGroup>
 </Project>

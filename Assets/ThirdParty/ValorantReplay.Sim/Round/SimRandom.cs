@@ -30,6 +30,14 @@ namespace ValorantReplay.Sim
 
         public static Random Create(int seed, int agent, RandomStream stream) => new Random(StreamSeed(seed, agent, stream));
 
+        /// <summary>One stream of the given purpose for each of agents agents.</summary>
+        internal static Random[] CreateAll(int seed, int agents, RandomStream stream)
+        {
+            var a = new Random[agents];
+            for (int i = 0; i < agents; i++) a[i] = Create(seed, i, stream);
+            return a;
+        }
+
         // SplitMix64 finaliser
         static ulong Mix(ulong z)
         {

@@ -716,7 +716,7 @@ namespace ValoReplay.Play
         {
             var d = Sim.Director(team);
             if (d == null) return "";
-            return $"{d.Plan} → {d.TargetSite}{(d.Executing ? " (executing)" : "")}{(d.Rotations > 0 ? " rotated" : "")}";
+            return $"{d.PlanName} → {d.TargetSite}{(d.Executing ? " (executing)" : "")}{(d.Rotations > 0 ? " rotated" : "")}";
         }
 
         /// <summary>Mode and, for the AI, the chosen action and every score (the chosen one bold).</summary>

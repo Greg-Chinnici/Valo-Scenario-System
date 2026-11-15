@@ -19,12 +19,22 @@ namespace ValoReplay.EditorTools.AI
     {
         public float? ExecuteAt;
         public int? StackThreshold;
-        public AttackPlan Plan = AttackPlan.Default;
+        /// <summary>The attack plan (null = DefaultAttack).</summary>
+        public AttackPlan Plan;
+
+        /// <summary>The attack plan with these overrides, as the template every round copies.</summary>
+        public AttackPlan Attack()
+        {
+            var plan = Plan?.Clone() ?? new DefaultAttack();
+            if (ExecuteAt != null) plan.FixedExecuteAt = ExecuteAt.Value;
+            if (StackThreshold != null) plan.StackThreshold = StackThreshold.Value;
+            return plan;
+        }
 
         public override string ToString()
         {
             var parts = new List<string>();
-            if (Plan != AttackPlan.Default) parts.Add($"plan {Plan}");
+            if (Plan != null) parts.Add($"plan {Plan.Name}");
             if (ExecuteAt != null) parts.Add($"execute fixed at {ExecuteAt:0} s left");
             if (StackThreshold != null) parts.Add($"stack threshold {StackThreshold}");
             return parts.Count == 0 ? "defaults" : "override: " + string.Join(", ", parts);
@@ -100,6 +110,7 @@ namespace ValoReplay.EditorTools.AI
             var batch = new Batch { Map = map.Map, Tweaks = tweaks, Setup = setup };
             var sight = new MapSightTest(isMap);
             var options = Options();
+            var attack = tweaks.Attack();
             var info = MapCatalog.Find(map.Map);
             var spawnsAtk = Slots(map.Grid, map.AttackerSpawn);
             var spawnsDef = Slots(map.Grid, map.DefenderSpawn);
@@ -127,18 +138,12 @@ namespace ValoReplay.EditorTools.AI
                         });
                     }
                 }
-                var sim = new RoundSim(map, setups, new RoundSetup { Remaining = options.RoundTime, Plan = tweaks.Plan }, options, seed0 + i);
+                var sim = new RoundSim(map, setups, new RoundSetup { Remaining = options.RoundTime, Attack = attack }, options, seed0 + i);
                 sim.SightTest = (a, b) => sight.Clear(U(a), U(b));
                 var atkDir = sim.Director(0);
-                if (tweaks.ExecuteAt != null)
-                {
-                    atkDir.ExecuteAt = tweaks.ExecuteAt.Value;
-                    atkDir.Executing = sim.Remaining <= atkDir.ExecuteAt;   // a drawn tempo may already have executed at t 0
-                }
-                if (tweaks.StackThreshold != null) atkDir.StackThreshold = tweaks.StackThreshold.Value;
 
                 var r = new Round { Seed = seed0 + i, Site = atkDir.TargetSite };
-                if (!float.IsInfinity(atkDir.ExecuteAt)) r.PlannedExecute = Math.Max(0f, options.RoundTime - atkDir.ExecuteAt);
+                if (!float.IsInfinity(atkDir.Attack.ExecuteAt)) r.PlannedExecute = Math.Max(0f, options.RoundTime - atkDir.Attack.ExecuteAt);
                 batch.Staging.TryGetValue(r.Site, out var stage);
                 var last = new SVector3[sim.Agents.Count];
                 var still = new int[sim.Agents.Count];
@@ -218,11 +223,11 @@ namespace ValoReplay.EditorTools.AI
             return list;
         }
 
-        /// <summary>The attackers' staging point for a site as TeamDirector computes it (55% of the walking path from the
+        /// <summary>The attackers' staging point for a site as AttackPlan computes it (55% of the walking path from the
         /// attacker spawn), and path lengths around it.</summary>
         static (SVector3, float, float, float, float) StagingOf(SimMap map, SimMap.Site site)
         {
-            const float fraction = 0.55f;   // TeamDirector.Objective: Along(..., AttackerSpawn, site, 0.55)
+            const float fraction = AttackPlan.StagingDepth;   // AttackPlan.Objective: OnTheWay(c, site, StagingDepth, ...)
             var g = map.Grid;
             int a = g.Nearest(map.AttackerSpawn, 8f), b = g.Nearest(site.Center, 8f);
             var path = new List<int>();

@@ -15,7 +15,7 @@ public class RoundSimTests
     const int Rounds = 1000;
     static readonly int[] Attackers = { 0, 1, 2, 3, 4 }, Defenders = { 5, 6, 7, 8, 9 };
 
-    BatchResult Batch(Func<int, Profile> atk, Func<int, Profile> def, int rounds = Rounds, int seed = 0, AttackPlan plan = AttackPlan.Default)
+    BatchResult Batch(Func<int, Profile> atk, Func<int, Profile> def, int rounds = Rounds, int seed = 0, AttackPlan plan = null)
     {
         var sw = Stopwatch.StartNew();
         var b = SimBatch.Run(i => TestWorld.Round(atk, def, seed + i, plan), rounds);
@@ -105,8 +105,8 @@ public class RoundSimTests
     [Fact]
     public void Rush_EndsSooner()
     {
-        var rush = Batch(_ => Profile.Default, _ => Profile.Default, 300, plan: AttackPlan.Rush);
-        var slow = Batch(_ => Profile.Default, _ => Profile.Default, 300, plan: AttackPlan.Slow);
+        var rush = Batch(_ => Profile.Default, _ => Profile.Default, 300, plan: new RushAttack());
+        var slow = Batch(_ => Profile.Default, _ => Profile.Default, 300, plan: new SlowAttack());
         Assert.True(rush.MeanDuration + 5f < slow.MeanDuration, $"rush {rush.MeanDuration:0.0}s vs slow {slow.MeanDuration:0.0}s");
     }
 

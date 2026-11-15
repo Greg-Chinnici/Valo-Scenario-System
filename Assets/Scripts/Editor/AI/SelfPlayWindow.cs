@@ -173,7 +173,7 @@ namespace ValoReplay.EditorTools.AI
                 {
                     variants.Add(new DirectorTweaks { ExecuteAt = 75f });
                     variants.Add(new DirectorTweaks { ExecuteAt = 35f });
-                    variants.Add(new DirectorTweaks { Plan = AttackPlan.Rush });
+                    variants.Add(new DirectorTweaks { Plan = new RushAttack() });
                     variants.Add(new DirectorTweaks { StackThreshold = 2 });
                     variants.Add(new DirectorTweaks { StackThreshold = 99 });
                 }

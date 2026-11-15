@@ -32,10 +32,10 @@ namespace ValorantReplay.Sim
     {
         public static readonly AgentAction[] Choices = { AgentAction.Hold, AgentAction.Advance, AgentAction.Peek, AgentAction.FallBack, AgentAction.Trade };
 
-        /// <summary>Scores Choices (same order) into scores. Higher is better; 0 = not an option.</summary>
         /// <summary>Aggression with the clock: urgency pushes it towards 1, so even passive players commit when they must.</summary>
         public static float EffectiveAggression(in Situation s, Profile p) => p.Aggression + (1f - p.Aggression) * s.Urgency;
 
+        /// <summary>Scores Choices (same order) into scores. Higher is better; 0 = not an option.</summary>
         public static void Score(in Situation s, Profile p, float[] scores)
         {
             float a = EffectiveAggression(s, p), c = p.Cohesion;
