@@ -100,6 +100,7 @@
                     <ui:Toggle name="set-aim" label="Show other players' aim" class="rp-set" />
                     <ui:Toggle name="set-ai" label="Round AI (applies on restart)" class="rp-set" />
                     <ui:Toggle name="set-ai-matrix" label="AI behaviour matrix (F3)" class="rp-set" />
+                    <ui:Toggle name="set-ai-thoughts" label="AI actions above heads (F4)" class="rp-set" />
 
                     <ui:Label text="VIDEO" class="rp-set-title" />
                     <ui:Toggle name="set-map-textures" label="Map textures" class="rp-set" />

@@ -31,7 +31,7 @@ namespace ValoReplay.Play
         private Label _info;
         private Slider _sensitivity, _chLength, _chThickness, _chGap, _speed;
         private SliderInt _fov;
-        private Toggle _invert, _chDot, _chSpread, _ammo, _shots, _aim, _roundAi, _aiMatrix, _mapTextures, _vsync, _shadows, _lighting, _fullscreen;
+        private Toggle _invert, _chDot, _chSpread, _ammo, _shots, _aim, _roundAi, _aiMatrix, _aiThoughts, _mapTextures, _vsync, _shadows, _lighting, _fullscreen;
         private DropdownField _chColor, _fps;
 
         public bool IsOpen { get; private set; }
@@ -65,6 +65,7 @@ namespace ValoReplay.Play
             _aim = Bind<Toggle, bool>(root, "set-aim", v => s.showGhostAim = v);
             _roundAi = Bind<Toggle, bool>(root, "set-ai", v => s.roundAi = v);
             _aiMatrix = Bind<Toggle, bool>(root, "set-ai-matrix", v => { s.showAiMatrix = v; if (round != null && round.Ai != null) round.Ai.ShowMatrix = v; });
+            _aiThoughts = Bind<Toggle, bool>(root, "set-ai-thoughts", v => { s.showAiThoughts = v; if (round != null && round.Ai != null) round.Ai.ShowThoughts = v; });
             _mapTextures = Bind<Toggle, bool>(root, "set-map-textures", v => s.mapTextures = v);
             _vsync = Bind<Toggle, bool>(root, "set-vsync", v => { s.vSync = v; _fps.SetEnabled(!v); });
             _fps = Bind<DropdownField, string>(root, "set-fps", v => s.fpsLimit = FpsLimits[Mathf.Max(0, _fps.choices.IndexOf(v))]);
@@ -110,6 +111,7 @@ namespace ValoReplay.Play
             _aim.SetValueWithoutNotify(s.showGhostAim);
             _roundAi.SetValueWithoutNotify(s.roundAi);
             _aiMatrix.SetValueWithoutNotify(s.showAiMatrix);
+            _aiThoughts.SetValueWithoutNotify(s.showAiThoughts);
             _mapTextures.SetValueWithoutNotify(s.mapTextures);
             _vsync.SetValueWithoutNotify(s.vSync);
             int fi = System.Array.IndexOf(FpsLimits, s.fpsLimit);

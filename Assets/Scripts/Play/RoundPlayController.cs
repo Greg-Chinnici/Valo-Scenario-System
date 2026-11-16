@@ -49,6 +49,9 @@ namespace ValoReplay.Play
         public SpectatorController Spectator { get; private set; }
         public string Error { get; private set; }
         public ReplayInsights Insights => ghosts != null ? ghosts.Insights : null;
+        /// <summary>Screen pixels from the top that the HUD's top-left label takes (set by the HUD); debug overlays
+        /// start below it.</summary>
+        public float HudTopInset { get; set; } = 12f;
 
         /// <summary>A shot landed on a player: who, where, how much, and whether it finished them.</summary>
         public event System.Action<int, Region, float, bool> PlayerHit;

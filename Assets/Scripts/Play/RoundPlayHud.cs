@@ -256,6 +256,11 @@ namespace ValoReplay.Play
             UpdateKillFeed(t);
             UpdateSpectating(t);
             UpdateBoard();
+
+            // the AI matrix (F3) starts under "PLAYING AS": panel units to screen pixels
+            var panel = _root.panel;
+            if (panel != null && panel.visualTree.layout.height > 0f)
+                round.HudTopInset = _playingAs.worldBound.yMax * Screen.height / panel.visualTree.layout.height + 8f;
             UpdateWeapon();
             UpdateCrosshair();
 

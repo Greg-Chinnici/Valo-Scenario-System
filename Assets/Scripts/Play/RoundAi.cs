@@ -24,7 +24,7 @@ namespace ValoReplay.Play
     /// filled from the recording, from then on from the live world (everyone's live positions, your shots and the AI's,
     /// hits, kills, plants and defuses), so the AI only acts on what its team could know.
     /// Unity supplies line of sight (built map colliders + the recorded smokes) and your hits; the sim supplies everyone
-    /// else's pose, the spike, damage to you and the round result. F3 shows the behaviour matrix over each agent.
+    /// else's pose, the spike, damage to you and the round result. F3 shows the behaviour matrix, F4 each agent's action above its head.
     /// Without a player (<see cref="InitCommanded"/>, the replay viewer's command mode) every agent is AI from the takeover
     /// and takes orders through <see cref="Sim"/> (<see cref="RoundSim.Command"/>).
     /// </summary>
@@ -69,6 +69,8 @@ namespace ValoReplay.Play
         /// <summary>Your team (round play), or the attackers when nobody plays (command mode).</summary>
         public int Team => _player >= 0 ? _replay.Players[_player].Team : Sim.AttackingTeam;
         public bool ShowMatrix { get; set; }
+        /// <summary>Each AI agent's action drawn above its head (F4), apart from the matrix.</summary>
+        public bool ShowThoughts { get; set; }
 
         private const int MaxStepsPerFrame = 40;      // 2 s of sim at 20 Hz: a hitch never turns into a death spiral
         private const float TracerSeconds = 0.08f;
@@ -278,6 +280,7 @@ namespace ValoReplay.Play
             _mapSight = new MapSightTest(ghosts.IsMapCollider);
             sim.SightTest = Sight;
             ShowMatrix = GameSettings.Current.showAiMatrix;
+            ShowThoughts = GameSettings.Current.showAiThoughts;
             ghosts.Driver = this;
 
             for (int i = 0; i < _replay.Equippables.Count && i < 255; i++)
@@ -632,6 +635,12 @@ namespace ValoReplay.Play
                 GameSettings.Current.showAiMatrix = ShowMatrix;
                 GameSettings.Save();
             }
+            if (kb != null && kb.f4Key.wasPressedThisFrame)
+            {
+                ShowThoughts = !ShowThoughts;
+                GameSettings.Current.showAiThoughts = ShowThoughts;
+                GameSettings.Save();
+            }
         }
 
         // ------------------------------------------------------------------ tracers
@@ -665,18 +674,39 @@ namespace ValoReplay.Play
             _tracers[slot] = (l, Time.time + TracerSeconds);
         }
 
-        // ------------------------------------------------------------------ behaviour matrix overlay (F3)
+        // ------------------------------------------------------------------ behaviour matrix (F3) and overhead actions (F4)
 
         private static readonly string[] ChoiceShort = { "HOLD", "ADV", "PEEK", "BACK", "TRADE" };
         private GUIStyle _label, _table;
 
         private void OnGUI()
         {
-            if (!ShowMatrix || Sim == null || (_round != null && _round.Paused)) return;
+            if ((!ShowMatrix && !ShowThoughts) || Sim == null || (_round != null && _round.Paused)) return;
             _label ??= new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = 12, richText = true };
             _table ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, fontSize = 12, richText = true, padding = new RectOffset(8, 8, 6, 6) };
-            var cam = Camera.main;
+            if (ShowThoughts) DrawThoughts();
+            if (ShowMatrix) DrawMatrix();
+        }
 
+        /// <summary>Each AI agent's action and scores above its head (F4).</summary>
+        private void DrawThoughts()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            for (int i = 0; i < Sim.Agents.Count; i++)
+            {
+                var a = Sim.Agents[i];
+                if (!a.Alive || i == _player || !TryGetPose(i, out var pose) || !pose.Visible) continue;
+                var sp = cam.WorldToScreenPoint(pose.Position + Vector3.up * 1.3f);
+                if (sp.z <= 0f) continue;
+                var r = new Rect(sp.x - 110f, Screen.height - sp.y - 54f, 220f, 54f);
+                GUI.Label(r, $"<b>{_replay.Players[i].AgentName}</b>  {State(a)}", _label);
+            }
+        }
+
+        /// <summary>The table: director, both blackboards, every agent's state (F3).</summary>
+        private void DrawMatrix()
+        {
             var rows = new System.Text.StringBuilder();
             rows.Append("<b>AI BEHAVIOUR MATRIX</b>   (F3)\n");
             rows.Append(Started ? $"sim {Sim.Time:0.0}s   director: atk {DirectorText(Sim.AttackingTeam)}\n" : "waiting for the barrier drop\n");
@@ -701,15 +731,10 @@ namespace ValoReplay.Play
                 string who = _replay.Players[i].AgentName;
                 string line = $"<color={(a.Team == Team ? "#7CFFB2" : "#FF6B6B")}>{who,-9}</color> {State(a)}";
                 rows.Append(line).Append('\n');
-
-                if (cam == null || !a.Alive || i == _player || !TryGetPose(i, out var pose) || !pose.Visible) continue;
-                var sp = cam.WorldToScreenPoint(pose.Position + Vector3.up * 1.3f);
-                if (sp.z <= 0f) continue;
-                var r = new Rect(sp.x - 110f, Screen.height - sp.y - 54f, 220f, 54f);
-                GUI.Label(r, $"<b>{who}</b>  {State(a)}", _label);
             }
             var size = _table.CalcSize(new GUIContent(rows.ToString()));
-            GUI.Box(new Rect(12f, 12f, Mathf.Max(360f, size.x), size.y), rows.ToString(), _table);
+            float top = _round != null ? Mathf.Max(12f, _round.HudTopInset) : 12f;     // under the round HUD's "PLAYING AS"
+            GUI.Box(new Rect(12f, top, Mathf.Max(360f, size.x), size.y), rows.ToString(), _table);
         }
 
         private string DirectorText(int team)

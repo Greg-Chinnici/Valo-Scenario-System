@@ -30,6 +30,7 @@ namespace ValoReplay.Play
         public bool showGhostAim = true;
         public bool roundAi = true;                // others turn into AI when they notice you (applies on restart)
         public bool showAiMatrix;                  // F3: each AI agent's action and scores
+        public bool showAiThoughts;                // F4: each AI agent's action above its head
         public bool mapTextures = true;            // off: the map in plain greys
         // video
         public bool vSync = true;
