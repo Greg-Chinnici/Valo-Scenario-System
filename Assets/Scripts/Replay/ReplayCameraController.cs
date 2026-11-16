@@ -39,12 +39,12 @@ namespace ValoReplay.Replay
         private void OnEnable() { if (viewer != null) viewer.Loaded += FrameReplay; }
         private void OnDisable() { if (viewer != null) viewer.Loaded -= FrameReplay; }
 
-        /// <summary>Top-down view of the whole play area.</summary>
+        /// <summary>Top-down view of the whole play area, centred on where the players were.</summary>
         public void FrameReplay()
         {
             if (viewer == null || viewer.Replay == null) return;
-            var b = viewer.PlayArea;
-            _pivot = new Vector3(b.center.x, b.min.y, b.center.z);
+            var b = viewer.ViewArea;
+            _pivot = viewer.ViewCenter;
             _yaw = 0f;
             _pitch = 70f;
             float size = Mathf.Max(b.size.x, b.size.z);

@@ -227,9 +227,56 @@ namespace ValoReplay.Replay
                 }
             if (!any) b = new Bounds(Vector3.zero, new Vector3(100f, 10f, 100f));
             PlayArea = b;
+            MeasureViewArea(b);
             // Maps have several levels, so a flat minimap cannot match everyone: it sits at the lowest recorded
             // position (a capsule centre, not feet), and players on higher ground float above it.
             _floorY = b.min.y;
+        }
+
+        /// <summary>Where the overview camera looks: the centre of mass of on-map positions, leaving out the outer 1% on
+        /// each axis. Players falling into Abyss's pits reach 90 m below the floor, which put a camera aimed at the
+        /// lowest point under the map.</summary>
+        public Vector3 ViewCenter { get; private set; }
+        /// <summary>The 1st to 99th percentile of on-map positions on each axis (what the overview frames).</summary>
+        public Bounds ViewArea { get; private set; }
+
+        private void MeasureViewArea(Bounds fallback)
+        {
+            ViewCenter = fallback.center;
+            ViewArea = fallback;
+            int stride = Mathf.Max(1, Replay.TickCount * Replay.Players.Count / 200000);
+            var points = new List<Vector3>();
+            for (int t = 0; t < Replay.TickCount; t += stride)
+                for (int p = 0; p < Replay.Players.Count; p++)
+                {
+                    var f = Replay.GetFrame(t, p);
+                    if (!f.Alive || (f.Flags & FrameFlags.HasData) == 0 || (f.Flags & FrameFlags.OffMap) != 0) continue;
+                    points.Add(Replay.UnityPosition(f));
+                }
+            if (points.Count == 0) return;
+
+            var lo = new Vector3();
+            var hi = new Vector3();
+            var axis = new float[points.Count];
+            for (int a = 0; a < 3; a++)
+            {
+                for (int i = 0; i < axis.Length; i++) axis[i] = points[i][a];
+                Array.Sort(axis);
+                lo[a] = axis[(int)(0.01 * (axis.Length - 1))];
+                hi[a] = axis[(int)(0.99 * (axis.Length - 1))];
+            }
+            var sum = Vector3.zero;
+            int n = 0;
+            foreach (var q in points)
+            {
+                if (q.x < lo.x || q.x > hi.x || q.y < lo.y || q.y > hi.y || q.z < lo.z || q.z > hi.z) continue;
+                sum += q;
+                n++;
+            }
+            var area = new Bounds();
+            area.SetMinMax(lo, hi);
+            ViewArea = area;
+            ViewCenter = n > 0 ? sum / n : area.center;
         }
 
         private void BuildPlayers()
