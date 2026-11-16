@@ -197,9 +197,9 @@
 
 /* ---------------------------------------------------------------- teams */
 .vr-teams { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
-.vr-team { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; border-top-width: 3px; }
-.vr-team--0 { margin-right: 8px; border-top-color: var(--vr-team0); }
-.vr-team--1 { margin-left: 8px; border-top-color: var(--vr-team1); }
+.vr-team { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; border-width: 2px; }
+.vr-team--0 { margin-right: 8px; border-color: var(--vr-team0); }
+.vr-team--1 { margin-left: 8px; border-color: var(--vr-team1); }
 .vr-team-head { flex-direction: row; align-items: center; margin-bottom: 8px; }
 .vr-team-name { font-size: 13px; -unity-font-style: bold; letter-spacing: 1px; padding: 0; margin: 0; flex-grow: 1; }
 .vr-team-score { font-size: 24px; -unity-font-style: bold; padding: 0; margin: 0; }

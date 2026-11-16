@@ -120,6 +120,26 @@
 .rv-credits { color: var(--rv-credits); -unity-font-style: bold; font-size: 11px; padding: 0; margin: 0 8px 0 0; min-width: 40px; }
 .rv-status { color: var(--rv-warn); font-size: 10px; padding: 0; margin: 2px 0 0 0; }
 
+/* the right-hand list mirrors the left: stripe on the outer edge, rows hug it, HP faces the map; text still reads
+   left to right and ability chips keep their order */
+.rv-team-list--right .rv-player { flex-direction: row-reverse; padding: 4px 0 5px 8px; }
+.rv-team-list--right .rv-player-stripe {
+    border-top-left-radius: 0; border-bottom-left-radius: 0;
+    border-top-right-radius: 4px; border-bottom-right-radius: 4px;
+    margin: -4px 0 -5px 8px;
+}
+.rv-team-list--right .rv-line { flex-direction: row-reverse; }
+.rv-team-list--right .rv-player-agent { margin: 0 0 0 6px; }
+.rv-team-list--right .rv-player-name { -unity-text-align: middle-right; }
+.rv-team-list--right .rv-play-button { margin: 0 0 0 6px; }
+.rv-team-list--right .rv-player-hp { -unity-text-align: middle-left; }
+.rv-team-list--right .rv-hp-bar { flex-direction: row-reverse; }
+.rv-team-list--right .rv-player-guns { -unity-text-align: middle-right; }
+.rv-team-list--right .rv-player-armor { margin: 0 6px 0 0; }
+.rv-team-list--right .rv-credits { margin: 0 0 0 8px; -unity-text-align: middle-right; }
+.rv-team-list--right .rv-abilities { justify-content: flex-end; }
+.rv-team-list--right .rv-status { -unity-text-align: middle-right; }
+
 /* ---------------------------------------------------------------- abilities */
 .rv-abilities { flex-direction: row; align-items: center; flex-grow: 1; }
 .rv-ability {

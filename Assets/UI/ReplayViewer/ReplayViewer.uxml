@@ -51,7 +51,7 @@
                     <ui:Label name="kb-summary" class="rv-kb-summary" />
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="team1-list" class="rv-team-list" />
+            <ui:VisualElement name="team1-list" class="rv-team-list rv-team-list--right" />
         </ui:VisualElement>
 
         <ui:VisualElement class="rv-bottom">
