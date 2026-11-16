@@ -47,7 +47,7 @@ what it did.
 *Intel mode: where this team last saw or heard each enemy, how sure it still is, the areas they are probably in, and
 what it knows of their buy and abilities.*
 
-**What it can do.** The utility brain ([UtilityBrain.cs](Assets/ThirdParty/ValorantReplay.Sim/UtilityBrain.cs))
+**What it can do.** The utility brain ([UtilityBrain.cs](Assets/ThirdParty/ValorantReplay.Sim/Agents/UtilityBrain.cs))
 scores five actions:
 
 | Action | Raised by |
@@ -63,7 +63,7 @@ Less skilled agents get more random noise in their scores, so they make worse re
 clock: `effective = aggression + (1 − aggression) · urgency`. A passive player still commits when time runs out.
 Planting, defusing and picking up the spike happen separately once an agent reaches them.
 
-**The team plan.** The team director ([TeamDirector.cs](Assets/ThirdParty/ValorantReplay.Sim/TeamDirector.cs)) only
+**The team plan.** The team director ([TeamDirector.cs](Assets/ThirdParty/ValorantReplay.Sim/Strategy/TeamDirector.cs)) only
 tells each agent where its objective is. Attackers pick a site and when to execute, and rotate once if they learn the
 site is stacked. Defenders split across sites and retake after a plant. Each agent still decides for itself whether
 to go there.
@@ -74,7 +74,7 @@ None of the behaviour above is hand-tuned per player. It comes from the replays:
 players in it, and every other replay of the same map for the map itself. The more replays you have of a map, the
 better the AI plays it.
 
-**Profiles** ([ProfileFitter.cs](Assets/ThirdParty/ValorantReplay.Sim/ProfileFitter.cs)). Each player in a match
+**Profiles** ([ProfileFitter.cs](Assets/ThirdParty/ValorantReplay.Sim/Analysis/ProfileFitter.cs)). Each player in a match
 gets a profile from what they did in it. The four style knobs are scored against a measured population of 170 player
 matches. On each knob, 0.5 means typical:
 
@@ -89,7 +89,7 @@ Each knob is `0.5 + 0.2 · z · trust`, where `z` is how far the player is from 
 `trust = rounds / (rounds + 8)`. A player seen for a few rounds stays near average; a full match moves the knobs further.
 
 How a player shoots is measured directly
-([Measurements.cs](Assets/ThirdParty/ValorantReplay.Sim/Measurements.cs)) with the same definitions the simulation
+([Measurements.cs](Assets/ThirdParty/ValorantReplay.Sim/Analysis/Measurements.cs)) with the same definitions the simulation
 uses for its own agents:
 - accuracy;
 - head and leg share of hits;
@@ -98,18 +98,18 @@ uses for its own agents:
 
 A measured accuracy can't be used as a simulation parameter directly. Distance and movement lower what an agent
 actually hits, and turning and waiting for the next shot add to reaction time. `vrpsim tune`
-([ProfileTuner.cs](Assets/ThirdParty/ValorantReplay.Sim/ProfileTuner.cs)) works out the conversion by simulation.
+([ProfileTuner.cs](Assets/ThirdParty/ValorantReplay.Sim/Analysis/ProfileTuner.cs)) works out the conversion by simulation.
 After it, a fitted agent hits, reacts and places its crosshair like the player it replaces.
 
-**Where players look** ([LookModel.cs](Assets/ThirdParty/ValorantReplay.Sim/LookModel.cs)). For every 3 m patch of a
+**Where players look** ([LookModel.cs](Assets/ThirdParty/ValorantReplay.Sim/Map/LookModel.cs)). For every 3 m patch of a
 map, by side and by whether the player is moving, there is a histogram of the directions real players looked during
 fights. Agents check the angles real players checked, as often as they checked them, instead of looking where they
 walk.
 
-**When attacks go in** ([Tempo.cs](Assets/ThirdParty/ValorantReplay.Sim/Tempo.cs)). Execute and plant times are
+**When attacks go in** ([Tempo.cs](Assets/ThirdParty/ValorantReplay.Sim/Map/Tempo.cs)). Execute and plant times are
 learned from every replay of the map, so attackers on that map hit a site when real teams did.
 
-**The map itself** ([SimMap.cs](Assets/ThirdParty/ValorantReplay.Sim/SimMap.cs)). The walkable grid, the sites and the
+**The map itself** ([SimMap.cs](Assets/ThirdParty/ValorantReplay.Sim/Map/SimMap.cs)). The walkable grid, the sites and the
 spawns are built from where players stood in the replays. The simulation needs no map geometry and runs the same
 outside Unity.
 
@@ -120,7 +120,7 @@ what changes.
 ## How close it is
 
 `vrpsim calibrate` checks the AI against what really happened
-([Calibration.cs](Assets/ThirdParty/ValorantReplay.Sim/Calibration.cs)). It restarts every recorded round with every
+([Calibration.cs](Assets/ThirdParty/ValorantReplay.Sim/Analysis/Calibration.cs)). It restarts every recorded round with every
 player as AI, from the barrier drop and from later moments, runs each restart many times, and scores the real outcome
 against the spread of simulated ones. On the 17 published replays (155 rounds, 424 restart points):
 
