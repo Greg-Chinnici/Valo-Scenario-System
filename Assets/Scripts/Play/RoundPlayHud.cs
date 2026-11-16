@@ -68,6 +68,7 @@ namespace ValoReplay.Play
             _specName = _root.Q<Label>("spec-name");
             _specInfo = _root.Q<Label>("spec-info");
             _board = _root.Q("board");
+            _startPrompt = _root.Q("start-prompt");
             _abilities = new AbilityChips(compact: false);
             _root.Q("abilities").Add(_abilities.Root);
             Ui.Show(_message, false);
@@ -106,7 +107,7 @@ namespace ValoReplay.Play
             public Label Status;
         }
 
-        private VisualElement _board;
+        private VisualElement _board, _startPrompt;
         private readonly List<BoardRow> _boardRows = new List<BoardRow>();
         private Label _alliesCount, _enemiesCount;
 
@@ -256,6 +257,7 @@ namespace ValoReplay.Play
             UpdateKillFeed(t);
             UpdateSpectating(t);
             UpdateBoard();
+            _startPrompt?.EnableInClassList("rp-start--on", round.WaitingToStart && !round.Paused);
 
             // the AI matrix (F3) starts under "PLAYING AS": panel units to screen pixels
             var panel = _root.panel;

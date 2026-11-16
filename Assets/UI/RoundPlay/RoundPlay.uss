@@ -71,6 +71,9 @@
     -unity-text-align: middle-center;
 }
 
+.rp-start { top: 44%; font-size: 18px; letter-spacing: 2px; color: var(--rp-warn); display: none; }
+.rp-start--on { display: flex; }
+
 /* ---------------------------------------------------------------- spectating */
 .rp-spectate {
     position: absolute;

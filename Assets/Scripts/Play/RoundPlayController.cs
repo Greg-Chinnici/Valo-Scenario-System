@@ -140,6 +140,10 @@ namespace ValoReplay.Play
 
             yield return null;          // one frame with everything in place before the reveal
             ghosts.Playing = true;
+            // frozen until you click or press a key, so the round does not start while you are not looking
+            WaitingToStart = true;
+            ApplyTimeScale();
+            UpdateInput();
             LoadingScreen.Hide();
             if (!Paused)
             {
@@ -254,7 +258,7 @@ namespace ValoReplay.Play
         public void SetPaused(bool paused)
         {
             Paused = paused;
-            Time.timeScale = paused ? 0f : GameSettings.Current.gameSpeed;
+            ApplyTimeScale();
             UpdateInput();
             Cursor.lockState = paused || Replay == null ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = paused || Replay == null;
@@ -273,9 +277,25 @@ namespace ValoReplay.Play
             UpdateInput();
         }
 
+        /// <summary>Time stands still while paused or before the round starts; otherwise it runs at the game speed.</summary>
+        private void ApplyTimeScale() =>
+            Time.timeScale = Paused || WaitingToStart ? 0f : GameSettings.Current.gameSpeed;
+
+        /// <summary>Loaded and frozen: nothing moves until the first click or key (Esc still opens the menu).</summary>
+        public bool WaitingToStart { get; private set; }
+
+        private static bool StartInputThisFrame()
+        {
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            if (kb != null && kb.anyKey.wasPressedThisFrame && !kb.escapeKey.wasPressedThisFrame) return true;
+            // on release, so the click that starts the round does not also fire
+            return mouse != null && (mouse.leftButton.wasReleasedThisFrame || mouse.rightButton.wasReleasedThisFrame);
+        }
+
         private void UpdateInput()
         {
-            bool enabled = !Paused && !RoundOver && !Spectating && !Dead;
+            bool enabled = !Paused && !WaitingToStart && !RoundOver && !Spectating && !Dead;
             if (Fps != null) Fps.InputEnabled = enabled;
             if (Weapons != null) Weapons.InputEnabled = enabled;
         }
@@ -298,7 +318,7 @@ namespace ValoReplay.Play
             ghosts.ShowAimLines = s.showGhostAim;
             ghosts.MapTextures = s.mapTextures;
             ValoReplay.Maps.MapLighting.Ensure().Enhanced = s.enhancedLighting;
-            if (!Paused) Time.timeScale = s.gameSpeed;
+            ApplyTimeScale();
         }
 
         private void OnDestroy()
@@ -312,6 +332,13 @@ namespace ValoReplay.Play
         private void Update()
         {
             if (Replay == null || Fps == null) return;     // still loading
+            if (WaitingToStart)
+            {
+                if (Paused || !StartInputThisFrame()) return;
+                WaitingToStart = false;
+                ApplyTimeScale();
+                UpdateInput();
+            }
             if (Ai != null) UpdateAi();
             else if (!RoundOver && _round >= 0 && Now >= Replay.Rounds[_round].EndTime)
             {

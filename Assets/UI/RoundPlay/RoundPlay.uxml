@@ -36,6 +36,7 @@
                 <ui:Label text="LMB / →  next    ·    RMB / ←  previous    ·    V  back to your agent" class="rp-spec-hint" />
             </ui:VisualElement>
             <ui:Label name="message" class="rp-message" picking-mode="Ignore" />
+            <ui:Label name="start-prompt" text="CLICK OR PRESS ANY KEY TO START" class="rp-message rp-start" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <ui:VisualElement name="board" class="rp-board" picking-mode="Ignore">
