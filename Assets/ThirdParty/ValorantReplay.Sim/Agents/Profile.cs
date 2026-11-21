@@ -49,7 +49,7 @@ namespace ValorantReplay.Sim
         public bool Measured => Accuracy.HasValue || Headshots.HasValue || Legshots.HasValue || Reaction.HasValue || Placement.HasValue || Wander.HasValue;
 
         public override string ToString() => $"{Style} skill {Skill:0.00} aggr {Aggression:0.00} coh {Cohesion:0.00}" +
-            (Measured ? $" acc {BaseAccuracy:0.00} hs {HeadshotShare:0.00} rt {ReactionTime:0.00}" : "");
+            (Measured ? $" acc {BaseAccuracy:0.00} hs {HeadshotShare:0.00} rt {ReactionTime:0.00} conf {Confidence:0.00}" : "");
 
         // ------------------------------------------------ skill: execution
         /// <summary>Seconds from first seeing an enemy to the first shot (before turning).</summary>
@@ -78,6 +78,26 @@ namespace ValorantReplay.Sim
         public float HearingError => Lerp(7f, 2f, Skill);
         /// <summary>Seconds between re-decisions when nothing new happens.</summary>
         public float DecisionInterval => Lerp(0.7f, 0.25f, Skill);
+
+        /// <summary>How much this player trusts their own gunfight, 0..1 (0.5 = the population): from measured accuracy,
+        /// headshot share and reaction where there are measurements, else Skill. Confident players swing for trades and
+        /// wide-peek; unsure ones hold the angle or jiggle for information.</summary>
+        public float Confidence
+        {
+            get
+            {
+                float zs = (Skill - 0.5f) / 0.2f;     // the knobs are 0.5 + 0.2 z
+                float za = Accuracy.HasValue ? (Accuracy.Value - ConfidenceAccuracy) / ConfidenceAccuracySd : zs;
+                float zh = Headshots.HasValue ? (Headshots.Value - ConfidenceHeadshots) / ConfidenceHeadshotsSd : zs;
+                float zr = Reaction.HasValue ? (ConfidenceReaction - Reaction.Value) / ConfidenceReactionSd : zs;
+                return Clamp01(0.5f + 0.2f * (0.45f * za + 0.25f * zh + 0.3f * zr));
+            }
+        }
+        /// <summary>Population mean and spread of the measured execution parameters Confidence is scored against: 170 fitted
+        /// player-matches (vrpsim profiles over the published replays, Nov 2026).</summary>
+        public static float ConfidenceAccuracy = 0.289f, ConfidenceAccuracySd = 0.040f;
+        public static float ConfidenceHeadshots = 0.194f, ConfidenceHeadshotsSd = 0.057f;
+        public static float ConfidenceReaction = 0.412f, ConfidenceReactionSd = 0.026f;
 
         /// <summary>Tempo while advancing or peeking, as a share of run speed: aggressive players take first contact,
         /// passive ones play second in.</summary>

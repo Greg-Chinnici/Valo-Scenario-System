@@ -35,9 +35,12 @@ utility went where. Certainty fades with a 6-second half-life. When a seen enemy
 keeps an estimate of the areas they are probably in. The AI builds a *situation* from this blackboard:
 - the nearest believed threat, and how sure the team is of it;
 - how many teammates and enemies are near;
-- whether a trade is available;
+- whether a trade is available, and whether it knows where the killer is;
+- whether it just got a kill itself;
 - how far ahead of the team the agent is;
-- its health and the clock.
+- its health and the clock;
+- the buy: how much better or worse armed its team is, and whether the threat's distance suits its gun or the
+  enemy's (loadouts are public at the start of a round).
 
 It never reads where enemies really are. The Intel mode shows this same blackboard, so you can see why an agent did
 what it did.
@@ -52,21 +55,34 @@ scores five actions:
 
 | Action | Raised by |
 | --- | --- |
-| Hold | low aggression, a close and certain threat, being the waiting side in position, an Anchor play style |
-| Advance | aggression, time pressure (attackers), a planted spike (defenders), distance to the objective; lowered by cohesion when ahead of the team |
-| Peek | a believed enemy within 30 m that it can't see, aggression, a numbers advantage, skill, health |
-| Fall back | low health, being outnumbered, low aggression, all scaled by how close and certain the threat is |
-| Trade | a teammate who died nearby moments ago, cohesion, a Support play style |
+| Hold | low aggression, a close and certain threat, being the waiting side in position, an Anchor play style, the better buy, a threat at a range its gun wins |
+| Advance | aggression, time pressure (attackers), a planted spike (defenders), distance to the objective, an eco (attackers); lowered by cohesion when ahead of the team |
+| Peek | a believed enemy within 30 m that it can't see, aggression, a numbers advantage, skill, health, a range its gun wins; lowered by the better buy |
+| Fall back | low health, being outnumbered, being outranged, low aggression, all scaled by how close and certain the threat is; also right after a kill, for players unsure of their aim |
+| Trade | a teammate who died nearby moments ago, cohesion, confidence in its own aim, health, knowing where the killer is, a Support play style |
 
 The highest score wins. The current action gets a small bonus so agents don't change their minds on every decision.
 Less skilled agents get more random noise in their scores, so they make worse reads. Aggression goes up with the
 clock: `effective = aggression + (1 − aggression) · urgency`. A passive player still commits when time runs out.
 Planting, defusing and picking up the spike happen separately once an agent reaches them.
 
+*Confidence* is how much a player trusts its own gunfight: its measured accuracy, headshot share and reaction time
+against the population (skill when there are no measurements). It decides whether a player swings for a trade or
+holds the angle, and whether it gives up its angle after a kill.
+
+A peek or a trade also picks a **style**, at random in proportion to how well each one suits the player and the moment:
+
+| Style | How | Suits |
+| --- | --- | --- |
+| Wide | runs out wide of the angle, so a holder has to turn further and loses its pre-aim | aggression, confidence, a numbers advantage, a gun that wins up close |
+| Slice | walks round the angle with the crosshair on the believed spot, and reacts as fast as a holder | game sense, time to spare |
+| Jiggle | steps out about 3 m for a look and straight back, without stopping to fight | an unsure read, unsure aim, a good position not worth giving up (never for a trade) |
+
 **The team plan.** The team director ([TeamDirector.cs](Assets/ThirdParty/ValorantReplay.Sim/Strategy/TeamDirector.cs)) only
 tells each agent where its objective is. Attackers pick a site and when to execute, and rotate once if they learn the
-site is stacked. Defenders split across sites and retake after a plant. Each agent still decides for itself whether
-to go there.
+site is stacked. Defenders split across sites and retake after a plant. On an eco (outgunned by about half a buy or
+more), attackers rush their site from the start and defenders push up for close fights. Each agent still decides for
+itself whether to go there.
 
 ## Learned from replays
 
@@ -136,9 +152,10 @@ against the spread of simulated ones. On the 17 published replays (155 rounds, 4
 - Kills per round per player: correlation 0.33–0.38 with the recorded numbers (0.10 with default profiles).
 
 What still differs:
-- Trades are too common (22–23% of deaths against 12%).
+- Trades are a little too common (14% of deaths avenged against 12%).
 - Agents hold still where real players keep moving.
-- Abilities, economy, recoil and jumping are not modelled yet.
+- Abilities, recoil and jumping are not modelled yet. Each team's buy shapes how it plays, but there is no buying,
+  saving or picking up guns.
 
 ## What's here
 

@@ -27,7 +27,9 @@ namespace ValorantReplay.Sim
                     // than turning onto someone; a moving shooter also has to stop first
                     var to = agents[best].Position - a.Position;
                     float angle = Math.Abs(SimMath.DeltaYaw(a.Yaw, SimSpace.YawOf(to)));
-                    bool preAimed = !a.Moving && a.Action == AgentAction.Hold && angle <= Options.PreAimAngle;
+                    // so is slicing an angle: walking round it with the crosshair already on the believed spot
+                    bool slicing = a.Action == AgentAction.Peek && a.Swing == PeekStyle.Slice && a.Walking;
+                    bool preAimed = ((!a.Moving && a.Action == AgentAction.Hold) || slicing) && angle <= Options.PreAimAngle;
                     // no two reactions are alike (lognormal, mean ReactionTime); finding someone who only shot at you takes longer
                     float sigma = Options.ReactionSpread;
                     float reaction = a.Profile.ReactionTime * (float)Math.Exp(sigma * SimMath.Gaussian(aimRng[a.Index]) - sigma * sigma / 2f);
@@ -140,6 +142,8 @@ namespace ValorantReplay.Sim
             if (killer != null)
             {
                 killer.Kills++;
+                killer.LastKillTime = Time;
+                killer.LastKillPosition = v.Position;
                 // the dying player's last callout: where the killer is
                 boards[v.Team].Callout(new Sighting { Enemy = killer.Index, Position = killer.Position, Time = Time, Certainty = 1f, Cue = Cue.Seen }, v.Index, v.Profile, Time, commsRng[v.Index]);
             }

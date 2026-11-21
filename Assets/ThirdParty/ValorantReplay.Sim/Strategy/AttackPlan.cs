@@ -30,6 +30,9 @@ namespace ValorantReplay.Sim
         /// defended (once, with RotateUntil or more round time left).</summary>
         public int StackThreshold = 3;
         public float RotateUntil = 25f;
+        /// <summary>Outgunned by more than this (PlanContext.Economy below -EcoRush, e.g. pistols against rifles), the team
+        /// goes onto its site from the start: on an eco, waiting only gives the better guns time. +inf = never.</summary>
+        public float EcoRush = 0.5f;
 
         // ---------------------------------------------------------------- this round
 
@@ -59,6 +62,7 @@ namespace ValorantReplay.Sim
         protected internal virtual void Begin(PlanContext c, string site)
         {
             float own = ExecuteTime(c);
+            if (c.Economy < -EcoRush) own = float.PositiveInfinity;
             ExecuteAt = float.IsNaN(FixedExecuteAt) ? own : FixedExecuteAt;
             TargetSite = site ?? ChooseSite(c);
             Executing = c.Remaining <= ExecuteAt;

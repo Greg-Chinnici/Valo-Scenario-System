@@ -125,13 +125,17 @@ namespace ValorantReplay.Sim
     }
 
     /// <summary>The standard defense: anchors first, then everyone else, dealt round-robin over the sites; aggressive
-    /// non-anchors take space towards the attackers until the attack commits; rotate on contact.</summary>
+    /// non-anchors (every non-anchor on an eco) take space towards the attackers until the attack commits; rotate on
+    /// contact.</summary>
     public class DefaultDefense : DefensePlan
     {
         /// <summary>Non-anchors more aggressive than this push towards the attackers until the attack commits.</summary>
         public float PushAggression = 0.7f;
         /// <summary>How far they push, along the walking path from their site to the attacker spawn.</summary>
         public float PushDepth = 0.35f;
+        /// <summary>Outgunned by more than this (PlanContext.Economy below -EcoPush), every non-anchor pushes: close fights
+        /// from off angles are an eco's best chance. +inf = never.</summary>
+        public float EcoPush = 0.5f;
 
         protected internal override void Begin(PlanContext c)
         {
@@ -146,7 +150,8 @@ namespace ValorantReplay.Sim
         {
             var mine = c.Map.SiteNamed(a.AssignedSite);
             var attackers = c.Enemy;
-            if (mine != null && a.Profile.Style != PlayStyle.Anchor && a.Profile.Aggression > PushAggression && attackers != null && !attackers.Committed)
+            bool pushes = a.Profile.Aggression > PushAggression || c.Economy < -EcoPush;
+            if (mine != null && a.Profile.Style != PlayStyle.Anchor && pushes && attackers != null && !attackers.Committed)
             {
                 radius = 4f;
                 return c.PointAlong(mine.Center, c.Map.AttackerSpawn, PushDepth);

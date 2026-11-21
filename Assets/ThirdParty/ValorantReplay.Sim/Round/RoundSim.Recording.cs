@@ -42,7 +42,7 @@ namespace ValorantReplay.Sim
                 setup.Add(new AgentSetup
                 {
                     Team = team, Attacking = team == round.AttackingTeam, Position = SimSpace.FromReplay(replay, f), Yaw = f.Yaw,
-                    Alive = f.Alive, Health = f.Health, Armor = f.Armor + f.Shield, Profile = profiles(p), Weapon = gun,
+                    Alive = f.Alive, Health = f.Health, Armor = f.Armor + f.Shield, Profile = profiles(p), Weapon = gun, Loadout = WeaponStats.LoadoutValue(lo),
                     Name = replay.Players[p].DisplayName, Mode = followRecording ? AgentMode.Replay : AgentMode.Ai,
                 });
             }

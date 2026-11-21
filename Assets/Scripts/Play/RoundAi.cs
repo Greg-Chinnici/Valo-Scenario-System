@@ -744,7 +744,7 @@ namespace ValoReplay.Play
             return $"{d.PlanName} → {d.TargetSite}{(d.Executing ? " (executing)" : "")}{(d.Rotations > 0 ? " rotated" : "")}";
         }
 
-        /// <summary>Mode and, for the AI, the chosen action and every score (the chosen one bold).</summary>
+        /// <summary>Mode and, for the AI, the chosen action (with how it peeks) and every score (the chosen one bold).</summary>
         private string State(SimAgent a)
         {
             if (!a.Alive) return "<color=#888>dead</color>";
@@ -752,6 +752,7 @@ namespace ValoReplay.Play
             if (a.Mode == AgentMode.Replay) return "<color=#AAA>recording</color>";
             var sb = new System.Text.StringBuilder();
             sb.Append(a.Action.ToString().ToUpperInvariant());
+            if (a.PeekStyle != PeekStyle.None) sb.Append(' ').Append(a.PeekStyle.ToString().ToLowerInvariant());
             if (a.Engaging >= 0) sb.Append(" → ").Append(_replay.Players[a.Engaging].AgentName);
             sb.Append("   ");
             for (int c = 0; c < a.Scores.Length; c++)

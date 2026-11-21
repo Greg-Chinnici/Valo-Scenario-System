@@ -25,6 +25,15 @@ namespace ValorantReplay.Sim
         PickUp = 5,     // go to the dropped spike and pick it up
     }
 
+    /// <summary>How an agent peeks (AgentAction.Peek) or swings for a trade (AgentAction.Trade).</summary>
+    public enum PeekStyle : byte
+    {
+        None = 0,
+        Wide = 1,       // run out wide of the angle: the holder has to turn further, the peeker shoots off a run
+        Slice = 2,      // walk round the angle with the crosshair on the believed spot: pre-aimed, slow and silent
+        Jiggle = 3,     // step out for a look and straight back: information, rarely a fight
+    }
+
     public struct AgentOrder
     {
         public OrderType Type;
@@ -41,6 +50,8 @@ namespace ValorantReplay.Sim
         public Profile Profile = Profile.Default;
         public AgentMode Mode;
         public WeaponStats Weapon = WeaponStats.Rifle;
+        /// <summary>What its guns and armor were worth at the start (credits): the team's buy, RoundSim.Economy.</summary>
+        public int Loadout;
         public Beliefs Beliefs;
 
         public Vector3 Position;
@@ -50,6 +61,8 @@ namespace ValorantReplay.Sim
         public bool Moving, Walking, Crouching;
 
         public AgentAction Action;
+        /// <summary>How it peeks or swings while Action is Peek or Trade (None otherwise).</summary>
+        public PeekStyle PeekStyle => Action == AgentAction.Peek || Action == AgentAction.Trade ? Swing : PeekStyle.None;
         public Vector3 Goal;
         public string AssignedSite = "";
         /// <summary>The commander's order this agent is carrying out (Type None = the brain decides).</summary>
@@ -97,6 +110,12 @@ namespace ValorantReplay.Sim
         internal bool WatchesThreat;        // this decision believes in a threat at ThreatPosition (looked at while moving)
         internal Vector3 ThreatPosition;
         internal float[] LastCallout, LastHeard;
+        internal PeekStyle Swing;           // PeekStyle, kept while the peek or trade lasts
+        internal float LastKillTime = -100f;
+        internal Vector3 LastKillPosition;  // where its last victim fell
+        internal Vector3 PeekOrigin;        // Jiggle: where it stepped out from, and goes back to
+        internal bool PeekReturning;
+        internal float JiggleEnds;          // a jiggle that has not made it back by then ends where it is
         internal Vector3 PrevPosition;
         internal bool WantsDecision;
 

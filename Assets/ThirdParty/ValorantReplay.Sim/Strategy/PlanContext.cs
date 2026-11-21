@@ -36,6 +36,9 @@ namespace ValorantReplay.Sim
             get { foreach (var a in Sim.Agents) if (a.Team == Team) yield return a; }
         }
 
+        /// <summary>How much better armed this team is than the other, -1..1 (RoundSim.Economy).</summary>
+        public float Economy => Sim.Economy(Team);
+
         public bool CarriesSpike(SimAgent a) => Sim.SpikeState == SpikeStatus.Carried && Sim.SpikeCarrier == a.Index;
 
         /// <summary>Living enemies anyone on the team believes (certainty > 0.4) are within radius of p.</summary>

@@ -103,5 +103,14 @@ namespace ValorantReplay.Sim
         /// (no footsteps) when Skill x (1 - urgency) exceeds StealthSense, whatever its aggression.</summary>
         public float StealthSense = 0.5f;
         public float StealthRange = 35f;
+        /// <summary>Credits of average loadout difference that make RoundSim.Economy 1: about a rifle and heavy armor.</summary>
+        public float EconomyScale = 3900f;
+        /// <summary>Seconds after a kill an agent counts as just having killed (Situation.JustKilled): long enough for the
+        /// victim's teammates to swing on it.</summary>
+        public float RepositionWindow = 2f;
+        /// <summary>Jiggle peeks step this far out before going back.</summary>
+        public float JiggleDistance = 3f;
+        /// <summary>Wide swings come out this far to the side of the straight line to the believed enemy.</summary>
+        public float WideOffset = 4f;
     }
 }

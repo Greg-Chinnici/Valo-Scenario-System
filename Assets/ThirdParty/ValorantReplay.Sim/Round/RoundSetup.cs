@@ -16,6 +16,8 @@ namespace ValorantReplay.Sim
         public float Health = 100f, Armor = 50f;
         public Profile Profile = Profile.Default;
         public string Weapon = "";
+        /// <summary>What its guns and armor are worth (credits), for the team's buy; -1 = estimated from Weapon and Armor.</summary>
+        public int Loadout = -1;
         public string Name = "";
         public AgentMode Mode = AgentMode.Ai;
     }

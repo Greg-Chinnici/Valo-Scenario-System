@@ -5,7 +5,7 @@
 //
 // What is modelled: movement on the NavGrid, line of sight, footsteps and gunshots, per-agent beliefs and team
 // callouts, gunfights (reaction time, accuracy, damage, armor), the spike (carry, drop, plant, defuse, detonate).
-// What is not (yet): abilities, economy, recoil, jumping, exact hitboxes.
+// What is not (yet): abilities, buying (each team's buy is fixed for the round: Economy), recoil, jumping, exact hitboxes.
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -56,6 +56,8 @@ namespace ValorantReplay.Sim
         public readonly RoundTempo Tempo = new RoundTempo();
         readonly TempoSampler tempoSampler;
 
+        readonly float[] buy = new float[2];    // average loadout of each team's living players at the start
+
         struct Death { public float Time; public Vector3 Position; public int Killer; }
         readonly Death[] lastDeath = { new Death { Time = -100f }, new Death { Time = -100f } };
 
@@ -94,6 +96,7 @@ namespace ValorantReplay.Sim
                     Health = s.Alive ? s.Health : 0f, Armor = s.Armor, Beliefs = new Beliefs(n),
                     LastCallout = SimMath.Filled(n, -100f), LastHeard = SimMath.Filled(n, -100f), HoldYaw = s.Yaw,
                 };
+                a.Loadout = s.Loadout >= 0 ? s.Loadout : a.Weapon.Cost + WeaponStats.ArmorPrice(s.Armor);
                 agents.Add(a);
                 if (a.Alive) startPlayers.Add(i);
                 if (s.Attacking)
@@ -105,6 +108,9 @@ namespace ValorantReplay.Sim
             if (AttackingTeam < 0) throw new ArgumentException("no attacking team");
             for (int t = 0; t < 2; t++)
             {
+                int alive = 0;
+                foreach (var a in agents) if (a.Alive && a.Team == t) { buy[t] += a.Loadout; alive++; }
+                if (alive > 0) buy[t] /= alive;
                 boards[t] = new TeamBlackboard(t, n);
                 directors[t] = new TeamDirector(t, t == AttackingTeam);
             }
@@ -140,6 +146,14 @@ namespace ValorantReplay.Sim
         }
 
         public TeamBlackboard Board(int team) => boards[team];
+
+        /// <summary>How much better team is armed than the other, -1..1: the difference of the average loadouts of the
+        /// players alive at the start over Options.EconomyScale (a full buy against a pistol eco is about +0.9, a force
+        /// against a full buy about -0.5). Loadouts are public at the start of a round, so both teams know it.</summary>
+        public float Economy(int team) => Math.Max(-1f, Math.Min(1f, (buy[team] - buy[1 - team]) / Options.EconomyScale));
+
+        /// <summary>Average loadout (credits) of team's players alive at the start.</summary>
+        public float Buy(int team) => buy[team];
         public TeamDirector Director(int team) => team >= 0 && team < 2 ? directors[team] : null;
         public bool Sees(int agent, int other) => sees[agent, other];
 
