@@ -64,6 +64,12 @@ namespace ValorantReplay.Sim
         /// <summary>How it peeks or swings while Action is Peek or Trade (None otherwise).</summary>
         public PeekStyle PeekStyle => Action == AgentAction.Peek || Action == AgentAction.Trade ? Swing : PeekStyle.None;
         public Vector3 Goal;
+        /// <summary>The enemy its current action is about: the believed threat it holds on, peeks or backs off from, the
+        /// killer it trades; -1 = none. Set at each decision.</summary>
+        public int Focus = -1;
+        /// <summary>Where its team's director wants it at its last decision, and how close counts as there.</summary>
+        public Vector3 Objective;
+        public float ObjectiveRadius;
         public string AssignedSite = "";
         /// <summary>The commander's order this agent is carrying out (Type None = the brain decides).</summary>
         public AgentOrder Order;
@@ -118,6 +124,11 @@ namespace ValorantReplay.Sim
         internal float JiggleEnds;          // a jiggle that has not made it back by then ends where it is
         internal Vector3 PrevPosition;
         internal bool WantsDecision;
+        // what the event log last said it decided, and the objective it last logged (SimEventType.Decided, Objective)
+        internal AgentAction LoggedAction;
+        internal PeekStyle LoggedSwing;
+        internal int LoggedFocus = -1;
+        internal Vector3 LoggedObjective = new Vector3(float.NaN);
 
         public override string ToString() => $"{Index} {Name} team {Team} {(Attacking ? "atk" : "def")} {Mode} {(Alive ? Action.ToString() : "dead")}";
     }

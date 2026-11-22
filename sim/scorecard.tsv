@@ -1,0 +1,59 @@
+# vrpsim scorecard. better: lower, higher, or target (nearer the target is better: the recorded value, 0.5 for a PIT mean).
+# mean and sd over the seeds; regenerate with vrpsim scorecard ... --out after a change that is meant to move these.
+# replays	17
+# rounds	155
+# snapshots	424
+# runs	40
+# seeds	0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+# seeds_count	16
+# options	profiles loo; learned holdout; perception default
+metric	better	target	mean	sd
+win.brier	lower		0.221666	0.003464
+win.skill_vs_corpus	higher		0.105067	0.013986
+win.skill_vs_man_adv	higher		-0.072151	0.016755
+win.log_loss	lower		0.63527	0.010547
+win.reliability_error	lower		0.077698	0.008218
+spread.duration_pit	target	0.5	0.42591	0.003314
+spread.duration_ks	lower		0.156132	0.007772
+spread.first_kill_pit	target	0.5	0.521145	0.002259
+spread.first_kill_ks	lower		0.212028	0.004832
+spread.kills_pit	target	0.5	0.531631	0.002445
+spread.kills_ks	lower		0.077049	0.005005
+rate.attackers_win	target	0.558962	0.505211	0.003516
+rate.plant	target	0.638814	0.696744	0.003408
+rate.no_kill	target	0.002358	0.005837	0.00014
+rate.kills	target	5.568396	5.411689	0.01048
+rate.time_to_decide	target	41.95033	48.10289	0.145958
+tempo.execute_rate	target	0.36129	0.310071	0.004867
+tempo.execute_pit	target	0.5	0.455776	0.003214
+tempo.execute_ks	lower		0.202621	0.008536
+tempo.plant_pit	target	0.5	0.540832	0.003733
+tempo.plant_ks	lower		0.172883	0.009561
+tempo.attacker_speed_error	lower		1.173394	0.014549
+tempo.defender_speed_error	lower		1.867468	0.009683
+end.elimination	target	0.735484	0.552177	0.005618
+end.detonated	target	0.077419	0.06256	0.002979
+end.defused	target	0.180645	0.358196	0.006345
+end.time_expired	target	0.006452	0.027067	0.001451
+player.kills.r	higher		0.425236	0.021311
+player.kills.mae	lower		0.292669	0.002713
+player.deaths.r	higher		0.304634	0.024647
+player.deaths.mae	lower		0.15361	0.002819
+player.opening.r	higher		0.268642	0.011793
+player.opening.mae	lower		0.136475	0.001221
+player.first_kill.r	higher		0.281367	0.025598
+player.first_kill.mae	lower		0.092628	0.001143
+player.traded.r	higher		0.031879	0.032785
+player.traded.mae	lower		0.122763	0.001608
+player.accuracy.r	higher		0.866885	0.009647
+player.accuracy.mae	lower		0.039527	0.000457
+player.head_share.r	higher		0.939662	0.007518
+player.head_share.mae	lower		0.051463	0.001087
+player.leg_share.r	higher		0.924948	0.009824
+player.leg_share.mae	lower		0.032165	0.001169
+player.reaction.r	higher		0.551568	0.02587
+player.reaction.mae	lower		0.076708	0.001138
+player.shoots_after_notice.r	higher		0.15588	0.033205
+player.shoots_after_notice.mae	lower		0.228044	0.002479
+player.aim_error.r	higher		0.579922	0.029785
+player.aim_error.mae	lower		3.283802	0.043849

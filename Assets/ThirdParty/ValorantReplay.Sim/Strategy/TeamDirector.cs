@@ -1,7 +1,8 @@
 // TeamDirector.cs - runs a team's plan for the round. The plan (AttackPlan or DefensePlan) decides where the team
 // plays; the director adds what every plan shares, which is the spike: the attacker nearest a dropped spike goes for
 // it, and after the plant attackers guard it while defenders retake or, out of time, save. The director only hands
-// each agent an objective; whether the agent goes there is the agent's own decision (UtilityBrain).
+// each agent an objective; whether the agent goes there is the agent's own decision (UtilityBrain). It also logs the
+// plan's calls (execute, rotate, retake) as they happen, whichever plan makes them.
 using System;
 using System.Numerics;
 
@@ -26,6 +27,8 @@ namespace ValorantReplay.Sim
         public bool Retaking => Defense != null && Defense.Retaking;
 
         PlanContext context;
+        bool loggedExecute, loggedRetake;
+        int loggedRotations;
 
         public TeamDirector(int team, bool attacking)
         {
@@ -48,6 +51,7 @@ namespace ValorantReplay.Sim
                 Defense = (round.Defense ?? sim.Options.DefensePlans?.Pick(rng) ?? new DefaultDefense()).Clone();
                 Defense.Begin(context);
             }
+            LogCalls();
         }
 
         internal void Update()
@@ -56,7 +60,30 @@ namespace ValorantReplay.Sim
             if (Attacking) { if (!planted) Attack.Update(context); }
             else if (planted) Defense.UpdateRetake(context);
             else Defense.Update(context);
+            LogCalls();
         }
+
+        void LogCalls()
+        {
+            if (Executing && !loggedExecute)
+            {
+                loggedExecute = true;
+                Log(SimEventType.Executed, TargetSite);
+            }
+            if (Rotations > loggedRotations)
+            {
+                loggedRotations = Rotations;
+                Log(SimEventType.Rotated, Attacking ? TargetSite : Defense.RotatedTo);
+            }
+            if (Retaking && !loggedRetake)
+            {
+                loggedRetake = true;
+                Log(SimEventType.Retake, null);
+            }
+        }
+
+        void Log(SimEventType type, string site) =>
+            context.Sim.Log(new SimEvent { Type = type, Agent = -1, Other = -1, Team = Team, Site = site });
 
         /// <summary>Where this agent should be now, and how close counts as there.</summary>
         internal Vector3 Objective(SimAgent a, out float radius)

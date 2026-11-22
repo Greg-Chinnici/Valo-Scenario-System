@@ -51,6 +51,7 @@ namespace ValorantReplay.Sim
         readonly Random[] aimRng, decideRng, sensesRng, commsRng, lookRng;
         readonly List<int> startPlayers = new List<int>();
         float perceptionClock;
+        readonly List<Sighting> heard = new List<Sighting>();   // callouts a board took this tick
 
         /// <summary>Pacing so far (RoundTempo), sampled every RoundTempo.Interval from the start.</summary>
         public readonly RoundTempo Tempo = new RoundTempo();
@@ -215,8 +216,11 @@ namespace ValorantReplay.Sim
                 perceptionClock = 0f;
                 Perceive();
             }
-            boards[0].Update(Time);
-            boards[1].Update(Time);
+            for (int t = 0; t < 2; t++)
+            {
+                boards[t].Update(Time, heard);
+                foreach (var h in heard) Log(new SimEvent { Type = SimEventType.CalloutHeard, Agent = h.Caller, Other = h.Enemy, Team = t, Position = h.Position });
+            }
             directors[0].Update();
             directors[1].Update();
             foreach (var a in agents)
@@ -251,6 +255,14 @@ namespace ValorantReplay.Sim
             EndReason = reason;
         }
 
-        void Event(SimEventType type, int agent, int other = -1) => Events.Add(new SimEvent { Time = Time, Type = type, Agent = agent, Other = other });
+        void Event(SimEventType type, int agent, int other = -1) => Log(new SimEvent { Type = type, Agent = agent, Other = other, Team = -1 });
+
+        /// <summary>Adds e to Events at the current time, with the agent's team when it has an agent.</summary>
+        internal void Log(SimEvent e)
+        {
+            e.Time = Time;
+            if (e.Agent >= 0) e.Team = agents[e.Agent].Team;
+            Events.Add(e);
+        }
     }
 }

@@ -28,6 +28,8 @@ namespace ValorantReplay.Sim
         // ---------------------------------------------------------------- this round
 
         public int Rotations { get; protected set; }
+        /// <summary>The site the last rotation went to ("" = none).</summary>
+        public string RotatedTo { get; protected set; } = "";
         /// <summary>After the plant: the defenders have regrouped (or run out of time to) and are going in.</summary>
         public bool Retaking { get; protected set; }
 
@@ -96,6 +98,7 @@ namespace ValorantReplay.Sim
             }
             if (hit == null) return false;
             Rotations++;
+            RotatedTo = hit.Name;
             foreach (var site in sites)
             {
                 if (site == hit) continue;

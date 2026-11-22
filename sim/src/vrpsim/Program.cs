@@ -25,8 +25,16 @@
 //   vrpsim plans <a.vrp> [more.vrp ...] [-n 2] [--attack default,rush,slow,fake,latecall] [--seed 0] [--threads 0]
 //       every recorded round from the barrier drop, all AI with fitted profiles, played with each attack plan on the same
 //       seeds: win, plant and rotation rates per plan, and each plan's win rate against Default's round for round.
-//   run, calibrate, bots, duels and plans take --set <SimOptions field>=<value> (repeatable); run and calibrate take
+//   run, calibrate, bots, duels, plans and scorecard take --set <SimOptions field>=<value> (repeatable); run, calibrate and scorecard take
 //   --attack <plan or mix>, e.g. --attack fake or --attack default=3,fake=1,latecall=1 (Plans.AttackMix).
+//   vrpsim scorecard <folder|a.vrp> [...] [-n 40] [--seeds 0-4] [--out card.tsv] [--compare baseline.tsv] [--markdown summary.md] [--tolerance 4.5] [--threads 0]
+//       calibrate (default settings) on each seed and boil it down to ~50 named metrics, each with which way is better,
+//       their mean and spread between seeds (Scorecard.cs). --out saves it; --compare checks it against a saved one and
+//       exits 1 when a metric got worse by more than --tolerance standard errors (4.5), or the two are not comparable.
+//       The baseline is sim/scorecard.tsv: vrpsim scorecard data/replays -n 40 --seeds 0-15 --out sim/scorecard.tsv
+//       (regenerate it in the same commit as a change meant to move it); CI compares two seeds against it.
+//   vrpsim compare <baseline.tsv> <current.tsv> [--markdown summary.md] [--tolerance 4.5]
+//       the same check between two saved scorecards.
 //   vrpsim validate <folder|a.vrp> [...]
 //       checks replays meant for publishing: each loads with this .vrp layout, is anonymized (pseudonymous ids, generated
 //       or no names, no crosshair names, no recording time, no user tags), is named <Map>-<match id>.vrp, and plays a
@@ -55,6 +63,8 @@ static class Program
                 "bots" => BotsCmd(args.Skip(1).ToList()),
                 "duels" => DuelsCmd(args.Skip(1).ToList()),
                 "plans" => PlansCmd(args.Skip(1).ToList()),
+                "scorecard" => ScorecardCmd(args.Skip(1).ToList()),
+                "compare" => CompareCmd(args.Skip(1).ToList()),
                 _ => Usage(),
             };
         }
@@ -76,6 +86,8 @@ static class Program
         Console.Error.WriteLine("vrpsim duels <a.vrp> [more.vrp ...] [-n 2] [--players] [--threads 0]");
         Console.Error.WriteLine("vrpsim bots <a.vrp> [more.vrp ...] [-n 2] [--only roster,ladder,styles,brains] [--seed 0] [--threads 0]");
         Console.Error.WriteLine("vrpsim plans <a.vrp> [more.vrp ...] [-n 2] [--attack default,rush,slow,fake,latecall] [--seed 0] [--threads 0]");
+        Console.Error.WriteLine("vrpsim scorecard <folder|a.vrp> [...] [-n 40] [--seeds 0-4] [--out card.tsv] [--compare baseline.tsv] [--markdown summary.md] [--tolerance 4.5] [--threads 0]");
+        Console.Error.WriteLine("vrpsim compare <baseline.tsv> <current.tsv> [--markdown summary.md] [--tolerance 4.5]");
         return 2;
     }
 
@@ -612,9 +624,7 @@ static class Program
         Console.WriteLine($"players ({rep.Players.Count} player-matches, barrier snapshots)   recorded  simulated  corr r   MAE   (r: do fitted profiles keep players apart?)");
         void PlayerRow(string label, Func<PlayerTally, float> f, Func<PlayerTally, bool> has = null)
         {
-            has ??= _ => true;
-            var v = rep.Players.Where(p => p.Recorded.Rounds > 0 && p.Simulated.Rounds > 0 && has(p.Recorded) && has(p.Simulated))
-                .Select(p => (f(p.Recorded), f(p.Simulated))).ToList();
+            var v = rep.PlayerPairs(f, has);
             Console.WriteLine($"  {label,-44} {CalibrationReport.Mean(v, x => x.Item1),8:0.00}  {CalibrationReport.Mean(v, x => x.Item2),9:0.00}  " +
                 $"{CalibrationReport.Correlation(v),6:0.00}  {CalibrationReport.Mean(v, x => Math.Abs(x.Item1 - x.Item2)),5:0.00}");
         }
@@ -658,6 +668,138 @@ static class Program
             Console.WriteLine($"per-snapshot rows: {csv}");
         }
         return 0;
+    }
+
+    // ---------------------------------------------------------------- scorecard, compare
+
+    static int ScorecardCmd(List<string> a)
+    {
+        int runs = int.Parse(Take(a, "-n") ?? "40", CultureInfo.InvariantCulture);
+        var seeds = Seeds(Take(a, "--seeds") ?? "0");
+        int threads = int.Parse(Take(a, "--threads") ?? "0", CultureInfo.InvariantCulture);
+        string output = Take(a, "--out"), baseline = Take(a, "--compare"), markdown = Take(a, "--markdown"), tolerance = Take(a, "--tolerance");
+        var sets = new List<string>();
+        for (int i = a.IndexOf("--set"); i >= 0 && i + 1 < a.Count; i = a.IndexOf("--set", i + 1)) sets.Add(a[i + 1]);
+        int attackAt = a.IndexOf("--attack");
+        string attack = attackAt >= 0 && attackAt + 1 < a.Count ? a[attackAt + 1] : null;
+        var sim = Attacks(a, Sets(a, null));
+        var replays = ReplayFiles(a).Select(VrpReplay.Load).ToList();
+        if (replays.Count == 0) throw new ArgumentException("at least one .vrp (or a folder of them) expected");
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var cards = new List<Scorecard>();
+        foreach (int seed in seeds)
+        {
+            var o = new CalibrationOptions { Runs = runs, Seed = seed, Threads = threads, Sim = sim };
+            cards.Add(Scorecard.From(Calibration.Run(replays, o)));
+            Console.Error.WriteLine($"  seed {seed}: {clock.Elapsed.TotalSeconds:0} s");
+        }
+        var card = Scorecard.Combine(cards);
+        card.Set("options", "profiles loo; learned holdout; perception default" + string.Concat(sets.Select(s => "; set " + s)) + (attack != null ? "; attack " + attack : ""));
+        Console.WriteLine($"{card.Get("replays")} replays, {card.Get("snapshots")} snapshots x {runs} runs x {seeds.Count} seed(s) in {clock.Elapsed.TotalSeconds:0} s");
+        if (output != null)
+        {
+            card.Save(output);
+            Console.WriteLine($"scorecard: {output}");
+        }
+        if (baseline == null)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"  {"metric",-34} {"better",-6} {"target",8} {"mean",9} {"sd",8}");
+            foreach (var m in card.Metrics)
+                Console.WriteLine($"  {m.Name,-34} {m.Better.ToString().ToLowerInvariant(),-6} {(float.IsNaN(m.Target) ? "" : m.Target.ToString("0.000")),8} {m.Mean,9:0.0000} {(float.IsNaN(m.Sd) ? "" : m.Sd.ToString("0.0000")),8}");
+            return 0;
+        }
+        Console.WriteLine();
+        return CompareCards(Scorecard.Load(baseline), baseline, card, "this run", markdown, tolerance);
+    }
+
+    static int CompareCmd(List<string> a)
+    {
+        string markdown = Take(a, "--markdown"), tolerance = Take(a, "--tolerance");
+        if (a.Count != 2) throw new ArgumentException("compare <baseline.tsv> <current.tsv> expected");
+        return CompareCards(Scorecard.Load(a[0]), a[0], Scorecard.Load(a[1]), a[1], markdown, tolerance);
+    }
+
+    /// <summary>Prints every metric's change from baseline to current (and a GitHub summary with --markdown). Exit code 1
+    /// when a metric regressed or went missing, or the two were not run on the same replays and settings.</summary>
+    static int CompareCards(Scorecard baseline, string baselineName, Scorecard current, string currentName, string markdown, string tolerance)
+    {
+        float tol = tolerance != null ? float.Parse(tolerance, CultureInfo.InvariantCulture) : Scorecard.Tolerance;
+        var mismatch = new[] { "replays", "rounds", "snapshots", "runs", "options" }
+            .Where(k => baseline.Get(k) != current.Get(k)).Select(k => $"{k}: {baseline.Get(k)} vs {current.Get(k)}").ToList();
+        var changes = Scorecard.Compare(baseline, current, tol);
+        int regressed = changes.Count(c => c.Verdict == ScoreVerdict.Regressed || c.Verdict == ScoreVerdict.Missing);
+        int improved = changes.Count(c => c.Verdict == ScoreVerdict.Improved);
+        string Describe(Scorecard c) => $"{c.Seeds} seed(s) x {c.Get("runs")} runs";
+        string summary = $"{regressed} regressed, {improved} improved, {changes.Count - regressed - improved} within the noise " +
+            $"(beyond {tol:0.#} standard errors of the seed spread counts)";
+
+        Console.WriteLine($"{currentName} ({Describe(current)}) against {baselineName} ({Describe(baseline)})");
+        foreach (var m in mismatch) Console.WriteLine($"  NOT COMPARABLE: {m}; regenerate the baseline (vrpsim scorecard ... --out) if that is intended");
+        Console.WriteLine($"  {"metric",-34} {"better",-6} {"target",7} {"baseline",9} {"current",9} {"change",9} {"z",6}");
+        foreach (var c in changes)
+            Console.WriteLine($"  {c.Name,-34} {c.Better.ToString().ToLowerInvariant(),-6} {(float.IsNaN(c.Target) ? "" : c.Target.ToString("0.000")),7} " +
+                $"{c.Baseline,9:0.0000} {c.Current,9:0.0000} {c.Current - c.Baseline,9:+0.0000;-0.0000;0} {(float.IsNaN(c.Z) ? "" : c.Z.ToString("+0.0;-0.0;0")),6}  {Mark(c.Verdict)}");
+        Console.WriteLine(summary + "  (z: change in badness over its noise, + = worse)");
+
+        if (markdown != null)
+        {
+            using var w = new StreamWriter(markdown, append: true);
+            w.WriteLine("### Simulation scorecard");
+            w.WriteLine();
+            w.WriteLine($"{currentName} ({Describe(current)}) against `{baselineName}` ({Describe(baseline)}): **{summary}**.");
+            foreach (var m in mismatch) w.WriteLine($"\n**Not comparable**: {m}. Regenerate the baseline if that is intended.");
+            void Table(IEnumerable<ScoreChange> rows)
+            {
+                w.WriteLine();
+                w.WriteLine("| metric | better | target | baseline | current | z | |");
+                w.WriteLine("|---|---|---:|---:|---:|---:|---|");
+                foreach (var c in rows)
+                    w.WriteLine($"| {c.Name} | {c.Better.ToString().ToLowerInvariant()} | {(float.IsNaN(c.Target) ? "" : c.Target.ToString("0.000"))} | {c.Baseline:0.0000} | {c.Current:0.0000} | " +
+                        $"{(float.IsNaN(c.Z) ? "" : c.Z.ToString("+0.0;-0.0;0"))} | {Mark(c.Verdict)} |");
+            }
+            var notable = changes.Where(c => c.Verdict == ScoreVerdict.Regressed || c.Verdict == ScoreVerdict.Improved || c.Verdict == ScoreVerdict.Missing).ToList();
+            if (notable.Count > 0) Table(notable);
+            w.WriteLine();
+            w.WriteLine("<details><summary>every metric</summary>");
+            Table(changes);
+            w.WriteLine();
+            w.WriteLine("</details>");
+            w.WriteLine();
+        }
+        return regressed > 0 || mismatch.Count > 0 ? 1 : 0;
+
+        static string Mark(ScoreVerdict v) => v switch
+        {
+            ScoreVerdict.Regressed => "REGRESSED",
+            ScoreVerdict.Improved => "improved",
+            ScoreVerdict.Missing => "MISSING",
+            ScoreVerdict.Worse => "worse (noise)",
+            ScoreVerdict.Better => "better (noise)",
+            _ => "",
+        };
+    }
+
+    /// <summary>"0-4" or "0,1,2".</summary>
+    static List<int> Seeds(string s)
+    {
+        var dash = s.Split('-');
+        if (dash.Length == 2) { int lo = int.Parse(dash[0], CultureInfo.InvariantCulture), hi = int.Parse(dash[1], CultureInfo.InvariantCulture); return Enumerable.Range(lo, hi - lo + 1).ToList(); }
+        return s.Split(',').Select(v => int.Parse(v, CultureInfo.InvariantCulture)).ToList();
+    }
+
+    /// <summary>.vrp files, a folder standing for every .vrp in it (in name order).</summary>
+    static List<string> ReplayFiles(List<string> a)
+    {
+        var files = new List<string>();
+        foreach (var p in a)
+        {
+            if (Directory.Exists(p)) files.AddRange(Directory.GetFiles(p, "*.vrp").OrderBy(f => f, StringComparer.Ordinal));
+            else if (File.Exists(p)) files.Add(p);
+            else throw new ArgumentException($"{p}: not found");
+        }
+        return files;
     }
 
     // ---------------------------------------------------------------- tune

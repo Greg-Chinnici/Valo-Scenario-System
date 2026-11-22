@@ -151,6 +151,12 @@ against the spread of simulated ones. On the 17 published replays (155 rounds, 4
 - Attacker win prediction: Brier score 0.220, against 0.238 without learned tempo.
 - Kills per round per player: correlation 0.33–0.38 with the recorded numbers (0.10 with default profiles).
 
+`vrpsim scorecard` boils a calibration down to about 50 named metrics, each with the direction that counts as better
+([Scorecard.cs](Assets/ThirdParty/ValorantReplay.Sim/Analysis/Scorecard.cs)). The committed baseline,
+[sim/scorecard.tsv](sim/scorecard.tsv), holds each metric's mean and spread over 16 seeds. CI scores every push on two
+other seeds against it and fails when a metric gets worse by more than 4.5 standard errors of that spread. A change that
+is meant to move the numbers commits a new baseline with it, so the diff of `sim/scorecard.tsv` shows what it did.
+
 What still differs:
 - Trades are a little too common (14% of deaths avenged against 12%).
 - Agents hold still where real players keep moving.
@@ -209,6 +215,11 @@ dotnet run --project sim/src/vrpsim -- tune data/replays/*.vrp
 ```
 
 ```bash
+dotnet run --project sim/src/vrpsim -c Release -- scorecard data/replays -n 40 --seeds 1000,1001 --compare sim/scorecard.tsv
+dotnet run --project sim/src/vrpsim -c Release -- scorecard data/replays -n 40 --seeds 0-15 --out sim/scorecard.tsv
+```
+
+```bash
 dotnet run --project sim/src/vrpsim -- validate data/replays
 ```
 
@@ -217,6 +228,8 @@ dotnet run --project sim/src/vrpsim -- validate data/replays
   `--ai` everyone is AI. With `--takeover <n>`, only player n (numbered as `profiles` lists them) starts as AI, and
   the others follow the recording until they notice the difference. With neither, every run reproduces the recording.
 - `calibrate` and `tune` are described above.
+- `scorecard` checks a change against the baseline (first line). If the change is meant to move the numbers, the second
+  line regenerates the baseline. `--set` and `--attack` try a constant or a plan without editing code.
 - `validate` checks that replays are fit to publish.
 
 ## Status

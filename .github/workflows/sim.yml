@@ -18,3 +18,7 @@ jobs:
       # every published replay must load, be anonymized, be named by its pseudonymous match id and simulate
       - name: Validate published replays
         run: dotnet run --project sim/src/vrpsim -c Release -- validate data/replays
+      # the AI against the recorded rounds: two seeds scored against the committed baseline (sim/scorecard.tsv, 16
+      # seeds). Fails when a metric got clearly worse; a change meant to move the numbers commits a new baseline with it
+      - name: Scorecard
+        run: dotnet run --project sim/src/vrpsim -c Release -- scorecard data/replays -n 40 --seeds 1000,1001 --compare sim/scorecard.tsv --markdown "$GITHUB_STEP_SUMMARY"

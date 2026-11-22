@@ -191,6 +191,13 @@ namespace ValorantReplay.Sim
             a.NextDecision = Time + a.Profile.DecisionInterval;
             var dir = directors[a.Team];
             var objective = dir.Objective(a, out float objRadius);
+            a.Objective = objective;
+            a.ObjectiveRadius = objRadius;
+            if (!(SimSpace.FlatDistance(objective, a.LoggedObjective) <= objRadius))     // NaN: none logged yet
+            {
+                a.LoggedObjective = objective;
+                Log(new SimEvent { Type = SimEventType.Objective, Agent = a.Index, Other = -1, Position = objective });
+            }
             var s = new Situation
             {
                 Attacking = a.Attacking,
@@ -260,6 +267,12 @@ namespace ValorantReplay.Sim
                 a.PeekOrigin = a.Position;
                 a.PeekReturning = false;
                 a.JiggleEnds = Time + JiggleTimeout;
+            }
+            a.Focus = a.Action == AgentAction.Trade ? death.Killer : a.Action == AgentAction.Advance ? -1 : threatEnemy;
+            if (a.Action != a.LoggedAction || a.PeekStyle != a.LoggedSwing || a.Focus != a.LoggedFocus)
+            {
+                (a.LoggedAction, a.LoggedSwing, a.LoggedFocus) = (a.Action, a.PeekStyle, a.Focus);
+                Log(new SimEvent { Type = SimEventType.Decided, Agent = a.Index, Other = a.Focus, Action = a.Action, Swing = a.PeekStyle });
             }
             switch (a.Action)
             {

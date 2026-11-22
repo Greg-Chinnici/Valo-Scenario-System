@@ -165,6 +165,26 @@ namespace ValorantReplay.Sim
             }
         }
 
+        /// <summary>Gap between predicted and observed win rate over the Reliability bins, weighted by how many snapshots
+        /// each holds (expected calibration error): 0 = a 70% prediction comes true 70% of the time.</summary>
+        public float ReliabilityError(int bins = 5)
+        {
+            int n = 0;
+            float sum = 0f;
+            foreach (var b in Reliability(bins))
+                if (b.Count > 0) { sum += b.Count * Math.Abs(b.Predicted - b.Observed); n += b.Count; }
+            return n > 0 ? sum / n : float.NaN;
+        }
+
+        /// <summary>Recorded and simulated f per player-match, over the players with both sides (has: enough samples on
+        /// each side, e.g. 30 bullets for accuracy).</summary>
+        public List<(float Rec, float Sim)> PlayerPairs(Func<PlayerTally, float> f, Func<PlayerTally, bool> has = null)
+        {
+            has = has ?? (_ => true);
+            return Players.Where(p => p.Recorded.Rounds > 0 && p.Simulated.Rounds > 0 && has(p.Recorded) && has(p.Simulated))
+                .Select(p => (f(p.Recorded), f(p.Simulated))).ToList();
+        }
+
         /// <summary>Pearson correlation of recorded and simulated per-round values across players.</summary>
         public static float Correlation(IList<(float Rec, float Sim)> v)
         {

@@ -87,10 +87,10 @@ namespace ValorantReplay.Sim
 
         /// <summary>A teammate calls out a sighting. Depending on the caller's cohesion and sense it reaches the board after
         /// a delay or never, off by up to the caller's CalloutError, as a Callout with CalloutCertainty of the caller's
-        /// certainty, still stamped with when it was seen.</summary>
-        public void Callout(Sighting s, int callerIndex, Profile caller, float now, Random rng)
+        /// certainty, still stamped with when it was seen. False when it was never made.</summary>
+        public bool Callout(Sighting s, int callerIndex, Profile caller, float now, Random rng)
         {
-            if (rng.NextDouble() < caller.CalloutDropChance) { Dropped++; return; }
+            if (rng.NextDouble() < caller.CalloutDropChance) { Dropped++; return false; }
             Made++;
             s.Cue = Cue.Callout;
             s.Caller = callerIndex;
@@ -98,14 +98,17 @@ namespace ValorantReplay.Sim
             float err = caller.CalloutError;
             s.Position += new Vector3((float)(rng.NextDouble() * 2 - 1) * err, 0f, (float)(rng.NextDouble() * 2 - 1) * err);
             pending.Add(new Pending { S = s, Deliver = now + caller.CalloutDelay });
+            return true;
         }
 
-        public void Update(float now)
+        /// <summary>Delivers the callouts due by now. heard (cleared first): the ones that changed what the board believes.</summary>
+        public void Update(float now, List<Sighting> heard = null)
         {
+            heard?.Clear();
             for (int i = pending.Count - 1; i >= 0; i--)
             {
                 if (pending[i].Deliver > now) continue;
-                Board.Observe(pending[i].S, now, HalfLife);
+                if (Board.Observe(pending[i].S, now, HalfLife)) heard?.Add(pending[i].S);
                 pending.RemoveAt(i);
             }
         }

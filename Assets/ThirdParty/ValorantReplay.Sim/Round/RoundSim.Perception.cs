@@ -49,10 +49,16 @@ namespace ValorantReplay.Sim
             if (!was || Time - a.LastCallout[b.Index] >= Options.CalloutRefresh * a.Profile.CalloutRefreshScale)
             {
                 a.LastCallout[b.Index] = Time;
-                boards[a.Team].Callout(s, a.Index, a.Profile, Time, commsRng[a.Index]);
+                Callout(a, s);
             }
             if (!was) a.WantsDecision = true;
             if (a.Mode == AgentMode.Replay && b.Mode != AgentMode.Replay) Diverge(a);
+        }
+
+        void Callout(SimAgent a, Sighting s)
+        {
+            bool made = boards[a.Team].Callout(s, a.Index, a.Profile, Time, commsRng[a.Index]);
+            Log(new SimEvent { Type = made ? SimEventType.CalloutMade : SimEventType.CalloutDropped, Agent = a.Index, Other = s.Enemy, Position = s.Position });
         }
 
         // forcesDivergence: whether hearing a sound the recording does not have takes a replay agent off it. Footsteps do;
@@ -67,7 +73,7 @@ namespace ValorantReplay.Sim
             if (a.Beliefs.Observe(s, Time, a.Profile.MemoryHalfLife) && Time - a.LastCallout[b.Index] >= Options.CalloutRefresh * a.Profile.CalloutRefreshScale)
             {
                 a.LastCallout[b.Index] = Time;
-                boards[a.Team].Callout(s, a.Index, a.Profile, Time, commsRng[a.Index]);
+                Callout(a, s);
             }
             if (forcesDivergence && a.Mode == AgentMode.Replay && b.Mode != AgentMode.Replay) Diverge(a);
         }
