@@ -32,6 +32,8 @@ namespace ValoReplay.Play
         public float Now => Ai != null ? Ai.Now : ghosts != null ? ghosts.Time : 0f;
         /// <summary>The character AI for everyone else (null = they play as recorded).</summary>
         public RoundAi Ai { get; private set; }
+        /// <summary>Records this takeover as a branch of the replay to share (round AI only, else null).</summary>
+        public TakeoverRecorder Recorder { get; private set; }
         /// <summary>You were killed (round AI only).</summary>
         public bool Dead { get; private set; }
         /// <summary>"ROUND WON · SPIKE DEFUSED" once the AI round is over, else null.</summary>
@@ -126,6 +128,8 @@ namespace ValoReplay.Play
                     Ai.Init(this, ghosts, aiTask.Result);
                     // the blackboards learn the round so far from the recording; the AI decides from them
                     yield return Ai.WarmUp(p => LoadingScreen.SetStatus($"Briefing the AI  {p * 100f:0}%"));
+                    Recorder = gameObject.AddComponent<TakeoverRecorder>();
+                    Recorder.Init(this, Ai);
                 }
             }
             ApplySettings();

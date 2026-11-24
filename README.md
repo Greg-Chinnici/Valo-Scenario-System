@@ -18,7 +18,7 @@ point everything is exactly as recorded, and you can change what happens next:
 | --- | --- |
 | **Watch** | Plays the recording. Follow any player, use the 3D map or the minimap, view aim lines, shot tracers and the scoreboard. |
 | **Intel** | Shows what one team knows at this moment: last-seen positions and how sure the team still is of them, sounds, and areas enemies are probably in. The AI decides from this same knowledge. |
-| **Play as** | Take over the followed player and play the rest of the round in first person. |
+| **Play as** | Take over the followed player and play the rest of the round in first person. **Share** in the Esc menu saves your version of the round (so far, or once it is over) as its own `.vrp`: the recording up to the takeover, then what you and the AI did. |
 | **Command** | Every player becomes AI from this moment and takes your orders, MOBA style: move, plant or defuse, hold an angle, or hand a player back to the AI. |
 
 When you take over, nobody else switches to AI straight away. Each player keeps following the recording until they

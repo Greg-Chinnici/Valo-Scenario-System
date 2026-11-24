@@ -70,11 +70,13 @@
         <ui:VisualElement name="pause" class="rp-pause">
             <ui:VisualElement class="rp-pause-panel">
                 <ui:VisualElement class="rp-pause-nav">
-                    <ui:Label text="PAUSED" class="rp-pause-title" />
+                    <ui:Label name="pause-title" text="PAUSED" class="rp-pause-title" />
                     <ui:Label name="pause-info" class="rp-pause-info" />
                     <ui:Button name="resume-button" text="RESUME" class="rp-menu-button rp-menu-button--primary" />
                     <ui:Button name="spectate-button" text="SPECTATE  (V)" class="rp-menu-button" />
                     <ui:Button name="restart-button" text="RESTART FROM TAKEOVER" class="rp-menu-button" />
+                    <ui:Button name="share-button" text="SHARE THIS ROUND" class="rp-menu-button" />
+                    <ui:Label name="share-status" class="rp-share-status" />
                     <ui:Button name="viewer-button" text="BACK TO REPLAY" class="rp-menu-button" />
                     <ui:Button name="import-button" text="BACK TO IMPORT" class="rp-menu-button" />
                     <ui:VisualElement class="rp-grow" />

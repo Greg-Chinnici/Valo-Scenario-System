@@ -68,6 +68,8 @@ namespace ValoReplay.Play
         public SimAgent You => _player >= 0 ? Sim.Agents[_player] : null;
         /// <summary>Your team (round play), or the attackers when nobody plays (command mode).</summary>
         public int Team => _player >= 0 ? _replay.Players[_player].Team : Sim.AttackingTeam;
+        /// <summary>An AI player fired: who, replay time, from its eye toward its target (or where it looks).</summary>
+        public event Action<int, float, Vector3, Vector3> Shot;
         public bool ShowMatrix { get; set; }
         /// <summary>Each AI agent's action drawn above its head (F4), apart from the matrix.</summary>
         public bool ShowThoughts { get; set; }
@@ -193,7 +195,9 @@ namespace ValoReplay.Play
                         }
                         LibraryIndex[full] = entry;
                     }
-                    if (entry.Map == replay.Map && entry.Match != replay.MatchId) candidates.Add((written, full, entry.Match));
+                    // a takeover branch is the AI's own play, not something to learn the map from
+                    if (entry.Map == replay.Map && entry.Match != replay.MatchId && !TakeoverRecorder.IsBranch(entry.Match))
+                        candidates.Add((written, full, entry.Match));
                 }
             candidates.Sort((a, b) => b.Written.CompareTo(a.Written));
             var result = new List<VrpReplay>();
@@ -384,9 +388,10 @@ namespace ValoReplay.Play
                 _lastShot[i] = a.LastShotTime;
                 if (i == _player || a.Mode == AgentMode.Replay) continue;
                 Knowledge.ReportShot(i, SimNow, U(a.Eye), _guns[i]);
-                if (!GameSettings.Current.showRecordedShots) continue;
                 var from = U(a.Eye);
                 var to = a.Engaging >= 0 ? U(Sim.Agents[a.Engaging].Eye) : from + Quaternion.Euler(0f, a.Yaw, 0f) * Vector3.forward * 30f;
+                Shot?.Invoke(i, SimNow, from, to);
+                if (!GameSettings.Current.showRecordedShots) continue;
                 Tracer(from, to, Color.Lerp(_ghosts.TeamColor(a.Team), Color.yellow, 0.6f));
             }
         }
@@ -611,6 +616,9 @@ namespace ValoReplay.Play
             Knowledge == null || team < 0 || team > 1 || enemy < 0 || enemy >= Knowledge.Teams[team].Enemies.Length ? null : Knowledge.Teams[team].Enemies[enemy];
 
         // ------------------------------------------------------------------ views for the controller and HUD
+
+        /// <summary>A player's gun this round (its primary, else its sidearm); "" when unknown.</summary>
+        public string GunOf(int player) => player >= 0 && player < _guns.Length ? _guns[player] ?? "" : "";
 
         /// <summary>Health, armor and gun of a player the AI drives; false = it plays as recorded.</summary>
         public bool TryGetStatus(int player, out int health, out int armor, out string gun)

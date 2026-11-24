@@ -273,7 +273,7 @@ namespace ValoReplay.Play
             if (round.RoundOver && !_roundOverShown)
             {
                 _roundOverShown = true;
-                ShowMessage($"{round.ResultText ?? "ROUND OVER"}  ·  ESC to return to the replay");
+                ShowMessage($"{round.ResultText ?? "ROUND OVER"}  ·  ESC to share it or return to the replay");
             }
             else if (round.Dead && !_deathShown && !round.RoundOver)
             {

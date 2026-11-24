@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -8,8 +9,9 @@ using ValoReplay.Replay;
 namespace ValoReplay.Play
 {
     /// <summary>
-    /// Esc menu for round play: pauses (time frozen, cursor free), resume / restart / back to replay / back to import,
-    /// and live settings. Every change is applied and saved immediately (<see cref="GameSettings"/>).
+    /// Esc menu for round play: pauses (time frozen, cursor free), resume / restart / share / back to replay / back to
+    /// import, and live settings. Share saves the takeover so far as a branched .vrp (<see cref="TakeoverRecorder"/>),
+    /// copies its path and shows it in the file browser. Every change is applied and saved immediately (<see cref="GameSettings"/>).
     /// Lives in the round play HUD document (the "pause" element of RoundPlay.uxml).
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -28,7 +30,8 @@ namespace ValoReplay.Play
         private static readonly int[] FpsLimits = { 0, 60, 120, 144, 165, 240, 360 };
 
         private VisualElement _pause;
-        private Label _info;
+        private Label _title, _info, _shareStatus;
+        private Button _share;
         private Slider _sensitivity, _chLength, _chThickness, _chGap, _speed;
         private SliderInt _fov;
         private Toggle _invert, _chDot, _chSpread, _ammo, _shots, _aim, _roundAi, _aiMatrix, _aiThoughts, _mapTextures, _vsync, _shadows, _lighting, _fullscreen;
@@ -41,7 +44,11 @@ namespace ValoReplay.Play
             if (round == null) round = FindFirstObjectByType<RoundPlayController>();
             var root = GetComponent<UIDocument>().rootVisualElement;
             _pause = root.Q("pause");
+            _title = root.Q<Label>("pause-title");
             _info = root.Q<Label>("pause-info");
+            _share = root.Q<Button>("share-button");
+            _shareStatus = root.Q<Label>("share-status");
+            _share.clicked += Share;
             root.Q<Button>("resume-button").clicked += () => Open(false);
             root.Q<Button>("restart-button").clicked += () => { Open(false); round.Restart(); };
             root.Q<Button>("spectate-button").clicked += () => { Open(false); round.Spectator?.Toggle(); };
@@ -136,8 +143,65 @@ namespace ValoReplay.Play
                     _info.text = $"{p.AgentName} · {round.Replay.MapName} · round {(ri >= 0 ? round.Replay.Rounds[ri].Number + 1 : 0)}";
                 }
                 else _info.text = round != null ? round.Error ?? "" : "";
+                _title.text = round != null && round.RoundOver ? "ROUND OVER" : "PAUSED";
+                RefreshShare(null);
             }
             if (round != null) round.SetPaused(open);
+        }
+
+        /// <summary>The share button and the line under it; message replaces the default text.</summary>
+        private void RefreshShare(string message)
+        {
+            var rec = round != null ? round.Recorder : null;
+            _share.SetEnabled(rec != null && rec.HasData && !rec.Saving);
+            if (message != null) _shareStatus.text = message;
+            else if (rec == null) _shareStatus.text = round != null && round.Replay != null ? "Sharing records the round AI's play: turn Round AI on and restart." : "";
+            else if (rec.SavedPath != null) _shareStatus.text = $"Saved {Path.GetFileName(rec.SavedPath)}. Share again to update it.";
+            else if (!rec.HasData) _shareStatus.text = "Nothing to share yet: play from the takeover first.";
+            else _shareStatus.text = round.RoundOver ? "Saves this round as its own replay." : "Saves the round so far as its own replay.";
+            _shareStatus.style.display = string.IsNullOrEmpty(_shareStatus.text) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        /// <summary>Saves the branch, copies its path and shows it in the file browser.</summary>
+        private async void Share()
+        {
+            var rec = round != null ? round.Recorder : null;
+            if (rec == null || rec.Saving || !rec.HasData) return;
+            RefreshShare("Saving…");
+            _share.SetEnabled(false);
+            string message;
+            try
+            {
+                string path = await rec.SaveAsync();
+                GUIUtility.systemCopyBuffer = path;
+                Reveal(path);
+                message = $"Saved {Path.GetFileName(path)} (path copied). Send the file: it opens from the replay library.";
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+                message = $"Could not save: {e.Message}";
+            }
+            if (this != null) RefreshShare(message);     // the scene may have changed while it saved
+        }
+
+        /// <summary>Selects the file in Finder / Explorer (elsewhere opens its folder).</summary>
+        private static void Reveal(string path)
+        {
+            try
+            {
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+                System.Diagnostics.Process.Start("open", $"-R \"{path}\"");
+#elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+#else
+                Application.OpenURL(new System.Uri(Path.GetDirectoryName(path)).AbsoluteUri);
+#endif
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[PauseMenu] Could not show {path}: {e.Message}");
+            }
         }
 
         private void Update()
